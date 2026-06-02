@@ -3,6 +3,10 @@ import { useState } from "react";
 export default function App() {
   const [view, setView] = useState("start");
 
+window.onpopstate = () => {
+  setView("start");
+};
+
   return (
     <>
       {view === "start" && <StartPage setView={setView} />}
@@ -25,19 +29,28 @@ function StartPage({ setView }) {
           <p style={tagline}>Boka tvättstugan, enkelt.</p>
         </div>
 
-        <button style={heroButton} onClick={() => setView("tenant")}>
+        <button style={heroButton} onClick={() => {
+  window.history.pushState({}, "");
+  setView("tenant");
+}}>
           <span style={buttonIcon}>👤</span>
           <span>Hyresgäst</span>
           <span style={buttonArrow}>›</span>
         </button>
 
-        <button style={heroButton} onClick={() => setView("landlord")}>
+        <button style={heroButton} onClick={() => {
+  window.history.pushState({}, "");
+  setView("landlord");
+}}>
           <span style={buttonIcon}>🏢</span>
           <span>Hyresvärd</span>
           <span style={buttonArrow}>›</span>
         </button>
 
-        <button style={adminButton} onClick={() => setView("admin")}>
+        <button style={adminButton} onClick={() => {
+  window.history.pushState({}, "");
+  setView("admin");
+}}>
           <span>🔒</span>
           <span>Admin</span>
         </button>
