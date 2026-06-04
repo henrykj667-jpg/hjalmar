@@ -186,7 +186,7 @@ const heroButton = {
   color: "white",
   fontSize: "20px",
   fontWeight: "800",
-  boxShadow: "0 14px 32px rgba(20,70,160,0.35)",
+  boxShadow: "0 18px 38px rgba(20,70,160,0.45)",
   cursor: "pointer",
   display: "flex",
   alignItems: "center",
