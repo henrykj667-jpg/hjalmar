@@ -1,7 +1,23 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+import { supabase } from "./supabaseClient";
+
+
 
 export default function App() {
   const [view, setView] = useState("start");
+useEffect(() => {
+  async function testConnection() {
+    const { data, error } = await supabase
+      .from("houses")
+      .select("*");
+
+    console.log("HOUSES DATA:", data);
+    console.log("HOUSES ERROR:", error);
+  }
+
+  testConnection();
+}, []);
 
 window.onpopstate = () => {
   setView("start");
@@ -60,17 +76,85 @@ function StartPage({ setView }) {
 }
 
 function TenantLogin({ setView }) {
+  const [city, setCity] = useState("");
+  const [address, setAddress] = useState("");
+  const [pin, setPin] = useState("");
+
   return (
     <div style={pageContainer}>
       <div style={card}>
         <h2 style={pageTitle}>Hyresgäst</h2>
         <p style={pageText}>Logga in till din tvättstuga.</p>
 
-        <input style={inputStyle} placeholder="Stad" />
-        <input style={inputStyle} placeholder="Adress" />
-        <input style={inputStyle} placeholder="PIN-kod" type="password" inputMode="numeric" maxLength="4" />
+        <input
+          style={inputStyle}
+          placeholder="Stad"
+          value={city}
+          onChange={(e) => setCity(e.target.value)}
+        />
 
-        <button style={primaryButton}>Logga in</button>
+        <input
+          style={inputStyle}
+          placeholder="Adress"
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+        />
+
+        <input
+          style={inputStyle}
+          placeholder="PIN-kod"
+          type="password"
+          inputMode="numeric"
+          maxLength="4"
+          value={pin}
+          onChange={(e) => setPin(e.target.value)}
+        />
+
+       <button
+  style={primaryButton}
+  onClick={async () => {
+    const { data: houses, error: houseError } = await supabase
+      .from("houses")
+      .select("*")
+      .eq("city", city)
+      .eq("address", address);
+
+    if (houseError) {
+      console.log("HOUSE ERROR:", houseError);
+      return;
+    }
+
+    if (!houses || houses.length === 0) {
+      console.log("Fastigheten hittades inte");
+      return;
+    }
+
+    const house = houses[0];
+
+    const { data: tenants, error: tenantError } = await supabase
+      .from("tenants")
+      .select("*")
+      .eq("house_id", house.id)
+      .eq("pin", pin);
+
+    if (tenantError) {
+      console.log("TENANT ERROR:", tenantError);
+      return;
+    }
+console.log("HOUSE ID:", house.id);
+console.log("PIN INPUT:", pin);
+   console.log("TENANTS:", tenants);
+
+    if (!tenants || tenants.length === 0) {
+      console.log("Fel PIN-kod");
+      return;
+    }
+
+    console.log("INLOGGAD:", tenants[0]);
+  }}
+>
+  Logga in
+</button>
 
         <button style={backButton} onClick={() => setView("start")}>
           ← Tillbaka
