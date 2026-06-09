@@ -6,6 +6,8 @@ import { supabase } from "./supabaseClient";
 
 export default function App() {
   const [view, setView] = useState("start");
+  const [loggedInTenant, setLoggedInTenant] = useState(null);
+const [currentHouse, setCurrentHouse] = useState(null);
 useEffect(() => {
   async function testConnection() {
     const { data, error } = await supabase
@@ -26,7 +28,30 @@ window.onpopstate = () => {
   return (
     <>
       {view === "start" && <StartPage setView={setView} />}
-      {view === "tenant" && <TenantLogin setView={setView} />}
+      {view === "tenant" && (
+  <TenantLogin
+    setView={setView}
+    setLoggedInTenant={setLoggedInTenant}
+    setCurrentHouse={setCurrentHouse}
+  />
+)}
+
+{view === "tenantHome" && (
+  <TenantHome
+    setView={setView}
+    tenant={loggedInTenant}
+    house={currentHouse}
+  />
+)}
+
+{view === "booking" && (
+  <BookingPage
+    setView={setView}
+    tenant={loggedInTenant}
+    house={currentHouse}
+  />
+)}
+
       {view === "landlord" && <LandlordLogin setView={setView} />}
       {view === "admin" && <AdminPage setView={setView} />}
     </>
@@ -75,7 +100,7 @@ function StartPage({ setView }) {
   );
 }
 
-function TenantLogin({ setView }) {
+function TenantLogin({ setView, setLoggedInTenant, setCurrentHouse }) {
   const [city, setCity] = useState("");
   const [address, setAddress] = useState("");
   const [pin, setPin] = useState("");
@@ -151,12 +176,131 @@ console.log("PIN INPUT:", pin);
     }
 
     console.log("INLOGGAD:", tenants[0]);
+    setLoggedInTenant(tenants[0]);
+setCurrentHouse(house);
+setView("tenantHome");
   }}
 >
   Logga in
 </button>
 
         <button style={backButton} onClick={() => setView("start")}>
+          ← Tillbaka
+        </button>
+      </div>
+    </div>
+  );
+}
+function TenantHome({ setView, tenant, house }) {
+  return (
+    <div style={pageContainer}>
+      <div style={card}>
+        <h2 style={pageTitle}>Välkommen {tenant?.name}</h2>
+        <p style={pageText}>
+          {house?.address}, {house?.city}
+        </p>
+
+        <button
+  style={primaryButton}
+  onClick={() => setView("booking")}
+>
+  Boka tvättid
+</button>
+
+        <button style={backButton} onClick={() => setView("start")}>
+          Logga ut
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function BookingPage({ setView, tenant, house }) {
+  const today = new Date().toISOString().split("T")[0];
+  const [bookings, setBookings] = useState([]);
+
+  useEffect(() => {
+  loadBookings();
+}, []);
+
+async function loadBookings() {
+  const { data } = await supabase
+    .from("bookings")
+    .select("*")
+    .eq("house_id", house.id)
+    .eq("date", today);
+
+  setBookings(data || []);
+}
+
+  async function bookSlot(startTime, endTime) {
+
+  const { data: existing } = await supabase
+    .from("bookings")
+    .select("*")
+    .eq("house_id", house.id)
+    .eq("date", today)
+    .eq("start_time", startTime);
+
+  if (existing.length > 0) {
+    alert("Passet är redan bokat");
+    return;
+  }
+
+  const { error } = await supabase.from("bookings").insert([
+    {
+      house_id: house.id,
+      tenant_id: tenant.id,
+      name: tenant.name,
+      date: today,
+      start_time: startTime,
+      end_time: endTime,
+    },
+  ]);
+
+  if (error) {
+    console.log("BOOKING ERROR:", error);
+    return;
+  }
+
+  loadBookings();
+
+  alert("Tvättid bokad!");
+}
+
+
+  return (
+    <div style={pageContainer}>
+      <div style={card}>
+        <h2 style={pageTitle}>Välj tvättpass</h2>
+        <p style={pageText}>{house?.address}</p>
+        <p style={pageText}>Datum: {today}</p>
+
+        <button
+          style={primaryButton}
+          onClick={() => bookSlot("07:00", "14:00")}
+        >
+          07:00–14:00
+        </button>
+
+        <button
+          style={primaryButton}
+          onClick={() => bookSlot("14:00", "21:00")}
+        >
+          14:00–21:00
+        </button>
+
+<h3>Dagens bokningar</h3>
+
+{bookings.map((booking) => (
+  <div key={booking.id}>
+    {booking.start_time} - {booking.end_time}
+    {" "}
+    ({booking.name})
+  </div>
+))}
+
+        <button style={backButton} onClick={() => setView("tenantHome")}>
           ← Tillbaka
         </button>
       </div>
