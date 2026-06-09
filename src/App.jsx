@@ -1,56 +1,42 @@
 import { useState, useEffect } from "react";
-
 import { supabase } from "./supabaseClient";
-
-
 
 export default function App() {
   const [view, setView] = useState("start");
   const [loggedInTenant, setLoggedInTenant] = useState(null);
-const [currentHouse, setCurrentHouse] = useState(null);
-useEffect(() => {
-  async function testConnection() {
-    const { data, error } = await supabase
-      .from("houses")
-      .select("*");
+  const [currentHouse, setCurrentHouse] = useState(null);
 
-    console.log("HOUSES DATA:", data);
-    console.log("HOUSES ERROR:", error);
-  }
-
-  testConnection();
-}, []);
-
-window.onpopstate = () => {
-  setView("start");
-};
+  window.onpopstate = () => {
+    setView("start");
+  };
 
   return (
     <>
       {view === "start" && <StartPage setView={setView} />}
+
       {view === "tenant" && (
-  <TenantLogin
-    setView={setView}
-    setLoggedInTenant={setLoggedInTenant}
-    setCurrentHouse={setCurrentHouse}
-  />
-)}
+        <TenantLogin
+          setView={setView}
+          setLoggedInTenant={setLoggedInTenant}
+          setCurrentHouse={setCurrentHouse}
+        />
+      )}
 
-{view === "tenantHome" && (
-  <TenantHome
-    setView={setView}
-    tenant={loggedInTenant}
-    house={currentHouse}
-  />
-)}
+      {view === "tenantHome" && (
+        <TenantHome
+          setView={setView}
+          tenant={loggedInTenant}
+          house={currentHouse}
+        />
+      )}
 
-{view === "booking" && (
-  <BookingPage
-    setView={setView}
-    tenant={loggedInTenant}
-    house={currentHouse}
-  />
-)}
+      {view === "booking" && (
+        <BookingPage
+          setView={setView}
+          tenant={loggedInTenant}
+          house={currentHouse}
+        />
+      )}
 
       {view === "landlord" && <LandlordLogin setView={setView} />}
       {view === "admin" && <AdminPage setView={setView} />}
@@ -70,28 +56,37 @@ function StartPage({ setView }) {
           <p style={tagline}>Boka tvättstugan, enkelt.</p>
         </div>
 
-        <button style={heroButton} onClick={() => {
-  window.history.pushState({}, "");
-  setView("tenant");
-}}>
+        <button
+          style={heroButton}
+          onClick={() => {
+            window.history.pushState({}, "");
+            setView("tenant");
+          }}
+        >
           <span style={buttonIcon}>👤</span>
           <span>Hyresgäst</span>
           <span style={buttonArrow}>›</span>
         </button>
 
-        <button style={heroButton} onClick={() => {
-  window.history.pushState({}, "");
-  setView("landlord");
-}}>
+        <button
+          style={heroButton}
+          onClick={() => {
+            window.history.pushState({}, "");
+            setView("landlord");
+          }}
+        >
           <span style={buttonIcon}>🏢</span>
           <span>Hyresvärd</span>
           <span style={buttonArrow}>›</span>
         </button>
 
-        <button style={adminButton} onClick={() => {
-  window.history.pushState({}, "");
-  setView("admin");
-}}>
+        <button
+          style={adminButton}
+          onClick={() => {
+            window.history.pushState({}, "");
+            setView("admin");
+          }}
+        >
           <span>🔒</span>
           <span>Admin</span>
         </button>
@@ -135,54 +130,50 @@ function TenantLogin({ setView, setLoggedInTenant, setCurrentHouse }) {
           onChange={(e) => setPin(e.target.value)}
         />
 
-       <button
-  style={primaryButton}
-  onClick={async () => {
-    const { data: houses, error: houseError } = await supabase
-      .from("houses")
-      .select("*")
-      .eq("city", city)
-      .eq("address", address);
+        <button
+          style={primaryButton}
+          onClick={async () => {
+            const { data: houses, error: houseError } = await supabase
+              .from("houses")
+              .select("*")
+              .eq("city", city)
+              .eq("address", address);
 
-    if (houseError) {
-      console.log("HOUSE ERROR:", houseError);
-      return;
-    }
+            if (houseError) {
+              console.log("HOUSE ERROR:", houseError);
+              return;
+            }
 
-    if (!houses || houses.length === 0) {
-      console.log("Fastigheten hittades inte");
-      return;
-    }
+            if (!houses || houses.length === 0) {
+              alert("Fastigheten hittades inte");
+              return;
+            }
 
-    const house = houses[0];
+            const house = houses[0];
 
-    const { data: tenants, error: tenantError } = await supabase
-      .from("tenants")
-      .select("*")
-      .eq("house_id", house.id)
-      .eq("pin", pin);
+            const { data: tenants, error: tenantError } = await supabase
+              .from("tenants")
+              .select("*")
+              .eq("house_id", house.id)
+              .eq("pin", pin);
 
-    if (tenantError) {
-      console.log("TENANT ERROR:", tenantError);
-      return;
-    }
-console.log("HOUSE ID:", house.id);
-console.log("PIN INPUT:", pin);
-   console.log("TENANTS:", tenants);
+            if (tenantError) {
+              console.log("TENANT ERROR:", tenantError);
+              return;
+            }
 
-    if (!tenants || tenants.length === 0) {
-      console.log("Fel PIN-kod");
-      return;
-    }
+            if (!tenants || tenants.length === 0) {
+              alert("Fel PIN-kod");
+              return;
+            }
 
-    console.log("INLOGGAD:", tenants[0]);
-    setLoggedInTenant(tenants[0]);
-setCurrentHouse(house);
-setView("tenantHome");
-  }}
->
-  Logga in
-</button>
+            setLoggedInTenant(tenants[0]);
+            setCurrentHouse(house);
+            setView("tenantHome");
+          }}
+        >
+          Logga in
+        </button>
 
         <button style={backButton} onClick={() => setView("start")}>
           ← Tillbaka
@@ -191,6 +182,7 @@ setView("tenantHome");
     </div>
   );
 }
+
 function TenantHome({ setView, tenant, house }) {
   return (
     <div style={pageContainer}>
@@ -200,12 +192,9 @@ function TenantHome({ setView, tenant, house }) {
           {house?.address}, {house?.city}
         </p>
 
-        <button
-  style={primaryButton}
-  onClick={() => setView("booking")}
->
-  Boka tvättid
-</button>
+        <button style={primaryButton} onClick={() => setView("booking")}>
+          Boka tvättid
+        </button>
 
         <button style={backButton} onClick={() => setView("start")}>
           Logga ut
@@ -217,105 +206,157 @@ function TenantHome({ setView, tenant, house }) {
 
 function BookingPage({ setView, tenant, house }) {
   const today = new Date().toISOString().split("T")[0];
-const [selectedDate, setSelectedDate] = useState(today);
+  const [selectedDate, setSelectedDate] = useState(today);
   const [bookings, setBookings] = useState([]);
 
-  const morningBooked = bookings.find((b) => b.start_time.startsWith("07:00"));
-const afternoonBooked = bookings.find((b) => b.start_time.startsWith("14:00"));
+  const morningBooked = bookings.find((b) =>
+    b.start_time.startsWith("07:00")
+  );
+
+  const afternoonBooked = bookings.find((b) =>
+    b.start_time.startsWith("14:00")
+  );
 
   useEffect(() => {
-  loadBookings();
-}, [selectedDate]);
+    loadBookings();
+  }, [selectedDate]);
 
-async function loadBookings() {
-  const { data } = await supabase
-    .from("bookings")
-    .select("*")
-    .eq("house_id", house.id)
-    .eq("date", selectedDate);
+  async function loadBookings() {
+    const { data } = await supabase
+      .from("bookings")
+      .select("*")
+      .eq("house_id", house.id)
+      .eq("date", selectedDate);
 
-  setBookings(data || []);
-}
+    setBookings(data || []);
+  }
 
   async function bookSlot(startTime, endTime) {
+    const { data: existing } = await supabase
+      .from("bookings")
+      .select("*")
+      .eq("house_id", house.id)
+      .eq("date", selectedDate)
+      .eq("start_time", startTime);
 
-  const { data: existing } = await supabase
-    .from("bookings")
-    .select("*")
-    .eq("house_id", house.id)
-    .eq("date", today)
-    .eq("start_time", startTime);
+    if (existing && existing.length > 0) {
+      alert("Passet är redan bokat");
+      return;
+    }
 
-  if (existing.length > 0) {
-    alert("Passet är redan bokat");
-    return;
-  }
+const { data: myBookings } = await supabase
+  .from("bookings")
+  .select("*")
+  .eq("tenant_id", tenant.id);
 
-  const { error } = await supabase.from("bookings").insert([
-    {
-      house_id: house.id,
-      tenant_id: tenant.id,
-      name: tenant.name,
-      date: selectedDate,
-      start_time: startTime,
-      end_time: endTime,
-    },
-  ]);
+const otherDayBooking = myBookings?.find(
+  (b) => b.date !== selectedDate
+);
 
-  if (error) {
-    console.log("BOOKING ERROR:", error);
-    return;
-  }
-
-  loadBookings();
-
-  alert("Tvättid bokad!");
+if (otherDayBooking) {
+  alert("Du har redan en bokning på ett annat datum. Avboka den först om du vill byta dag.");
+  return;
 }
 
+    const { error } = await supabase.from("bookings").insert([
+      {
+        house_id: house.id,
+        tenant_id: tenant.id,
+        name: tenant.name,
+        date: selectedDate,
+        start_time: startTime,
+        end_time: endTime,
+      },
+    ]);
+
+    if (error) {
+      console.log("BOOKING ERROR:", error);
+      alert("Kunde inte boka tiden");
+      return;
+    }
+
+    loadBookings();
+    alert("Tvättid bokad!");
+  }
+
+  async function cancelBooking(bookingId) {
+    const { error } = await supabase
+      .from("bookings")
+      .delete()
+      .eq("id", bookingId);
+
+    if (error) {
+      console.log("CANCEL ERROR:", error);
+      alert("Kunde inte avboka tiden");
+      return;
+    }
+
+    loadBookings();
+    alert("Tiden är avbokad");
+  }
 
   return (
     <div style={pageContainer}>
       <div style={card}>
         <h2 style={pageTitle}>Välj tvättpass</h2>
 
-<input
-  style={inputStyle}
-  type="date"
-  value={selectedDate}
-  onChange={(e) => setSelectedDate(e.target.value)}
-/>
+        <input
+          style={inputStyle}
+          type="date"
+          value={selectedDate}
+          onChange={(e) => setSelectedDate(e.target.value)}
+        />
 
         <p style={pageText}>{house?.address}</p>
         <p style={pageText}>Datum: {selectedDate}</p>
 
         <button
-  style={{
-    ...primaryButton,
-    background: morningBooked ? "#9ca3af" : "#4f75d8",
-  }}
-  onClick={() => bookSlot("07:00", "14:00")}
->
-  {morningBooked ? `07:00–14:00 Bokad av ${morningBooked.name}` : "07:00–14:00"}
-</button>
+          style={{
+            ...primaryButton,
+            background: morningBooked ? "#9ca3af" : "#4f75d8",
+          }}
+          onClick={() => bookSlot("07:00", "14:00")}
+        >
+          {morningBooked
+            ? `07:00–14:00 Bokad av ${morningBooked.name}`
+            : "07:00–14:00"}
+        </button>
 
         <button
-  style={{
-    ...primaryButton,
-    background: afternoonBooked ? "#9ca3af" : "#4f75d8",
-  }}
-  onClick={() => bookSlot("14:00", "21:00")}
->
-  {afternoonBooked ? `14:00–21:00 Bokad av ${afternoonBooked.name}` : "14:00–21:00"}
-</button>
-<h3>Dagens bokningar</h3>
+          style={{
+            ...primaryButton,
+            background: afternoonBooked ? "#9ca3af" : "#4f75d8",
+          }}
+          onClick={() => bookSlot("14:00", "21:00")}
+        >
+          {afternoonBooked
+            ? `14:00–21:00 Bokad av ${afternoonBooked.name}`
+            : "14:00–21:00"}
+        </button>
 
-{bookings.map((booking) => (
-  <div key={booking.id}>
-    {booking.start_time} - {booking.end_time}
-    {" "}
-    ({booking.name})
-  </div>
-))}
+        <h3>Dagens bokningar</h3>
+
+        {bookings.map((booking) => (
+          <div key={booking.id}>
+            {booking.start_time} - {booking.end_time} ({booking.name})
+
+            {booking.tenant_id === tenant.id && (
+              <button
+                onClick={() => cancelBooking(booking.id)}
+                style={{
+                  marginLeft: "10px",
+                  border: "none",
+                  background: "transparent",
+                  color: "#dc2626",
+                  cursor: "pointer",
+                  fontWeight: "600",
+                }}
+              >
+                Avboka
+              </button>
+            )}
+          </div>
+        ))}
 
         <button style={backButton} onClick={() => setView("tenantHome")}>
           ← Tillbaka
@@ -333,7 +374,12 @@ function LandlordLogin({ setView }) {
         <p style={pageText}>Logga in och hantera dina fastigheter.</p>
 
         <input style={inputStyle} placeholder="Företagsnamn" />
-        <input style={inputStyle} placeholder="PIN-kod" type="password" inputMode="numeric" />
+        <input
+          style={inputStyle}
+          placeholder="PIN-kod"
+          type="password"
+          inputMode="numeric"
+        />
 
         <button style={primaryButton}>Logga in</button>
 
@@ -368,8 +414,8 @@ const hero = {
   height: "100vh",
   backgroundImage: "url('/hero.jpg')",
   backgroundSize: "auto 100%",
-backgroundRepeat: "no-repeat",
-backgroundColor: "#eef2f7",
+  backgroundRepeat: "no-repeat",
+  backgroundColor: "#eef2f7",
   backgroundPosition: "center",
   display: "flex",
   justifyContent: "center",
@@ -381,7 +427,8 @@ backgroundColor: "#eef2f7",
 const softShade = {
   position: "absolute",
   inset: 0,
-  background: "linear-gradient(to bottom, rgba(255,255,255,0.15), rgba(255,255,255,0.35))",
+  background:
+    "linear-gradient(to bottom, rgba(255,255,255,0.15), rgba(255,255,255,0.35))",
 };
 
 const heroContent = {
