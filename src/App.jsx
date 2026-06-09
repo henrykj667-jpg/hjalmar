@@ -96,9 +96,15 @@ function StartPage({ setView }) {
 }
 
 function TenantLogin({ setView, setLoggedInTenant, setCurrentHouse }) {
-  const [city, setCity] = useState("");
-  const [address, setAddress] = useState("");
-  const [pin, setPin] = useState("");
+const [city, setCity] = useState(
+  localStorage.getItem("city") || ""
+);
+
+const [address, setAddress] = useState(
+  localStorage.getItem("address") || ""
+);
+
+const [pin, setPin] = useState("");
 
   return (
     <div style={pageContainer}>
@@ -166,6 +172,9 @@ function TenantLogin({ setView, setLoggedInTenant, setCurrentHouse }) {
               alert("Fel PIN-kod");
               return;
             }
+
+localStorage.setItem("city", city);
+localStorage.setItem("address", address);
 
             setLoggedInTenant(tenants[0]);
             setCurrentHouse(house);
