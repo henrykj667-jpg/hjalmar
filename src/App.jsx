@@ -217,18 +217,22 @@ function TenantHome({ setView, tenant, house }) {
 
 function BookingPage({ setView, tenant, house }) {
   const today = new Date().toISOString().split("T")[0];
+const [selectedDate, setSelectedDate] = useState(today);
   const [bookings, setBookings] = useState([]);
+
+  const morningBooked = bookings.find((b) => b.start_time.startsWith("07:00"));
+const afternoonBooked = bookings.find((b) => b.start_time.startsWith("14:00"));
 
   useEffect(() => {
   loadBookings();
-}, []);
+}, [selectedDate]);
 
 async function loadBookings() {
   const { data } = await supabase
     .from("bookings")
     .select("*")
     .eq("house_id", house.id)
-    .eq("date", today);
+    .eq("date", selectedDate);
 
   setBookings(data || []);
 }
@@ -252,7 +256,7 @@ async function loadBookings() {
       house_id: house.id,
       tenant_id: tenant.id,
       name: tenant.name,
-      date: today,
+      date: selectedDate,
       start_time: startTime,
       end_time: endTime,
     },
@@ -273,23 +277,36 @@ async function loadBookings() {
     <div style={pageContainer}>
       <div style={card}>
         <h2 style={pageTitle}>Välj tvättpass</h2>
+
+<input
+  style={inputStyle}
+  type="date"
+  value={selectedDate}
+  onChange={(e) => setSelectedDate(e.target.value)}
+/>
+
         <p style={pageText}>{house?.address}</p>
-        <p style={pageText}>Datum: {today}</p>
+        <p style={pageText}>Datum: {selectedDate}</p>
 
         <button
-          style={primaryButton}
-          onClick={() => bookSlot("07:00", "14:00")}
-        >
-          07:00–14:00
-        </button>
+  style={{
+    ...primaryButton,
+    background: morningBooked ? "#9ca3af" : "#4f75d8",
+  }}
+  onClick={() => bookSlot("07:00", "14:00")}
+>
+  {morningBooked ? `07:00–14:00 Bokad av ${morningBooked.name}` : "07:00–14:00"}
+</button>
 
         <button
-          style={primaryButton}
-          onClick={() => bookSlot("14:00", "21:00")}
-        >
-          14:00–21:00
-        </button>
-
+  style={{
+    ...primaryButton,
+    background: afternoonBooked ? "#9ca3af" : "#4f75d8",
+  }}
+  onClick={() => bookSlot("14:00", "21:00")}
+>
+  {afternoonBooked ? `14:00–21:00 Bokad av ${afternoonBooked.name}` : "14:00–21:00"}
+</button>
 <h3>Dagens bokningar</h3>
 
 {bookings.map((booking) => (
