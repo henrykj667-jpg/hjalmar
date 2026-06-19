@@ -430,6 +430,11 @@ function LandlordLogin({ setView, setLandlordHouses }) {
               .eq("company_name", companyName)
               .eq("landlord_pin", pin);
 
+              console.log("HOUSES:", houses);
+console.log("ERROR:", error);
+console.log("COMPANY:", companyName);
+console.log("PIN:", pin);
+
             if (error) {
               console.log("LANDLORD LOGIN ERROR:", error);
               alert("Kunde inte logga in");
@@ -486,6 +491,23 @@ function LandlordHome({ setView, houses, setSelectedLandlordHouse }) {
 }
 
 function LandlordHousePage({ setView, house }) {
+  const [bookings, setBookings] = useState([]);
+
+  useEffect(() => {
+    loadBookings();
+  }, []);
+
+  async function loadBookings() {
+    const today = new Date().toISOString().split("T")[0];
+
+    const { data } = await supabase
+      .from("bookings")
+      .select("*")
+      .eq("house_id", house.id)
+      .eq("date", today);
+
+    setBookings(data || []);
+  }
   return (
     <div style={pageContainer}>
       <div style={card}>
@@ -507,9 +529,15 @@ function LandlordHousePage({ setView, house }) {
 
         <h3>📅 Dagens bokningar</h3>
 
-        <div>07:00-14:00 Henrik</div>
-
-        <div>14:00-21:00 Ledig</div>
+       {bookings.length === 0 ? (
+  <p>Inga bokningar idag.</p>
+) : (
+  bookings.map((booking) => (
+    <div key={booking.id}>
+      {booking.start_time} - {booking.end_time} ({booking.name})
+    </div>
+  ))
+)}
 
         <button
           style={backButton}
