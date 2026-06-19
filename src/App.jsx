@@ -515,6 +515,8 @@ function LandlordHousePage({ setView, house }) {
   const [notice, setNotice] = useState(house?.notice || "");
   const [newTenantName, setNewTenantName] = useState("");
   const [newTenantPin, setNewTenantPin] = useState("");
+  const [editingTenantId, setEditingTenantId] = useState(null);
+  const [editPin, setEditPin] = useState("");
 
   useEffect(() => {
     loadBookings();
@@ -549,7 +551,6 @@ function LandlordHousePage({ setView, house }) {
       .eq("id", house.id);
 
     if (error) {
-      console.log("NOTICE ERROR:", error);
       alert("Kunde inte spara anslaget");
       return;
     }
@@ -567,37 +568,70 @@ function LandlordHousePage({ setView, house }) {
     ]);
 
     if (error) {
-      console.log("TENANT ERROR:", error);
       alert("Kunde inte lägga till hyresgäst");
       return;
     }
 
-    alert("Hyresgäst tillagd!");
-
-    loadTenants();
+    await loadTenants();
     setNewTenantName("");
     setNewTenantPin("");
+    alert("Hyresgäst tillagd!");
   }
 
-async function deleteTenant(id) {
-  if (!window.confirm("Ta bort hyresgästen?")) return;
+  async function saveTenantPin(id) {
+    if (!editPin.trim()) {
+      alert("PIN får inte vara tom");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("tenants")
+      .update({ pin: editPin.trim() })
+      .eq("id", id);
+
+    if (error) {
+      alert("Kunde inte ändra PIN");
+      return;
+    }
+
+    await loadTenants();
+    setEditingTenantId(null);
+    setEditPin("");
+    alert("PIN uppdaterad");
+  }
+
+  async function deleteTenant(id) {
+    if (!window.confirm("Ta bort hyresgästen?")) return;
+
+    const { error } = await supabase
+      .from("tenants")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      alert("Kunde inte ta bort hyresgästen");
+      return;
+    }
+
+    await loadTenants();
+    alert("Hyresgäst borttagen");
+  }
+async function deleteBooking(id) {
+  if (!window.confirm("Ta bort bokningen?")) return;
 
   const { error } = await supabase
-    .from("tenants")
+    .from("bookings")
     .delete()
     .eq("id", id);
 
   if (error) {
-    console.log(error);
-    alert("Kunde inte ta bort hyresgästen");
+    alert("Kunde inte ta bort bokningen");
     return;
   }
 
-  loadTenants();
-
-  alert("Hyresgäst borttagen");
+  loadBookings();
+  alert("Bokning borttagen");
 }
-  
   return (
     <div style={pageContainer}>
       <div style={card}>
@@ -607,11 +641,7 @@ async function deleteTenant(id) {
         <h3>📌 Anslagstavla</h3>
 
         <textarea
-          style={{
-            ...inputStyle,
-            minHeight: "90px",
-            resize: "vertical",
-          }}
+          style={{ ...inputStyle, minHeight: "90px", resize: "vertical" }}
           placeholder="Skriv meddelande till hyresgästerna..."
           value={notice}
           onChange={(e) => setNotice(e.target.value)}
@@ -624,44 +654,106 @@ async function deleteTenant(id) {
         <h3>📅 Dagens bokningar</h3>
 
         {bookings.length === 0 ? (
-          <p>Inga bokningar idag.</p>
-        ) : (
-          bookings.map((booking) => (
-            <div key={booking.id}>
-              {booking.start_time} - {booking.end_time} ({booking.name})
-            </div>
-          ))
-        )}
+  <p>Inga bokningar idag.</p>
+) : (
+  bookings.map((booking) => (
+    <div
+      key={booking.id}
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: "10px",
+      }}
+    >
+      <div>
+        {booking.start_time} - {booking.end_time} ({booking.name})
+      </div>
+
+      <button
+        style={{
+          background: "#ef4444",
+          color: "white",
+          border: "none",
+          borderRadius: "8px",
+          padding: "5px 10px",
+          cursor: "pointer",
+        }}
+        onClick={() => deleteBooking(booking.id)}
+      >
+        ❌
+      </button>
+    </div>
+  ))
+)}
 
         <h3>👥 Hyresgäster</h3>
 
-       {tenants.map((tenant) => (
-  <div
-    key={tenant.id}
-    style={{
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: "10px",
-    }}
-  >
-    <div>👤 {tenant.name}</div>
+        {tenants.map((tenant) => (
+          <div key={tenant.id} style={{ marginBottom: "12px" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <div>👤 {tenant.name}</div>
 
-    <button
-      style={{
-        background: "#ef4444",
-        color: "white",
-        border: "none",
-        borderRadius: "8px",
-        padding: "5px 10px",
-        cursor: "pointer",
-      }}
-      onClick={() => deleteTenant(tenant.id)}
-    >
-      ❌
-    </button>
-  </div>
-))}
+              <div style={{ display: "flex", gap: "6px" }}>
+                <button
+                  style={{
+                    background: "#4f75d8",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "8px",
+                    padding: "5px 10px",
+                    cursor: "pointer",
+                  }}
+                  onClick={() => {
+                    setEditingTenantId(tenant.id);
+                    setEditPin("");
+                  }}
+                >
+                  🔑
+                </button>
+
+                <button
+                  style={{
+                    background: "#ef4444",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "8px",
+                    padding: "5px 10px",
+                    cursor: "pointer",
+                  }}
+                  onClick={() => deleteTenant(tenant.id)}
+                >
+                  ❌
+                </button>
+              </div>
+            </div>
+
+            {editingTenantId === tenant.id && (
+              <div style={{ marginTop: "8px" }}>
+                <input
+                  style={inputStyle}
+                  placeholder="Ny PIN"
+                  value={editPin}
+                  onChange={(e) => setEditPin(e.target.value)}
+                />
+
+                <button
+                  style={primaryButton}
+                  onClick={() => saveTenantPin(tenant.id)}
+                >
+                  Spara ny PIN
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
 
         <input
           style={inputStyle}
