@@ -122,6 +122,7 @@ function TenantLogin({ setView, setLoggedInTenant, setCurrentHouse }) {
   const [address, setAddress] = useState(
     localStorage.getItem("address") || ""
   );
+  const [name, setName] = useState("");
   const [pin, setPin] = useState("");
 
   return (
@@ -143,6 +144,13 @@ function TenantLogin({ setView, setLoggedInTenant, setCurrentHouse }) {
           value={address}
           onChange={(e) => setAddress(e.target.value)}
         />
+
+<input
+  style={inputStyle}
+  placeholder="Namn"
+  value={name}
+  onChange={(e) => setName(e.target.value)}
+/>
 
         <input
           style={inputStyle}
@@ -179,8 +187,8 @@ function TenantLogin({ setView, setLoggedInTenant, setCurrentHouse }) {
               .from("tenants")
               .select("*")
               .eq("house_id", house.id)
-              .eq("pin", pin);
-
+.eq("name", name)
+.eq("pin", pin);
             if (tenantError) {
               console.log("TENANT ERROR:", tenantError);
               return;
@@ -616,22 +624,7 @@ function LandlordHousePage({ setView, house }) {
     await loadTenants();
     alert("Hyresgäst borttagen");
   }
-async function deleteBooking(id) {
-  if (!window.confirm("Ta bort bokningen?")) return;
 
-  const { error } = await supabase
-    .from("bookings")
-    .delete()
-    .eq("id", id);
-
-  if (error) {
-    alert("Kunde inte ta bort bokningen");
-    return;
-  }
-
-  loadBookings();
-  alert("Bokning borttagen");
-}
   return (
     <div style={pageContainer}>
       <div style={card}>
