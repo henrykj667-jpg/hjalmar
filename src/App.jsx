@@ -5,7 +5,8 @@ export default function App() {
   const [view, setView] = useState("start");
   const [loggedInTenant, setLoggedInTenant] = useState(null);
   const [currentHouse, setCurrentHouse] = useState(null);
-
+  const [landlordHouses, setLandlordHouses] = useState([]);
+const [selectedLandlordHouse, setSelectedLandlordHouse] = useState(null);
   window.onpopstate = () => {
     setView("start");
   };
@@ -38,7 +39,28 @@ export default function App() {
         />
       )}
 
-      {view === "landlord" && <LandlordLogin setView={setView} />}
+      {view === "landlord" && (
+        <LandlordLogin
+          setView={setView}
+          setLandlordHouses={setLandlordHouses}
+        />
+      )}
+
+      {view === "landlordHome" && (
+  <LandlordHome
+    setView={setView}
+    houses={landlordHouses}
+    setSelectedLandlordHouse={setSelectedLandlordHouse}
+  />
+)}
+
+{view === "houseDetails" && (
+  <LandlordHousePage
+    setView={setView}
+    house={selectedLandlordHouse}
+  />
+)}
+
       {view === "admin" && <AdminPage setView={setView} />}
     </>
   );
@@ -96,15 +118,11 @@ function StartPage({ setView }) {
 }
 
 function TenantLogin({ setView, setLoggedInTenant, setCurrentHouse }) {
-const [city, setCity] = useState(
-  localStorage.getItem("city") || ""
-);
-
-const [address, setAddress] = useState(
-  localStorage.getItem("address") || ""
-);
-
-const [pin, setPin] = useState("");
+  const [city, setCity] = useState(localStorage.getItem("city") || "");
+  const [address, setAddress] = useState(
+    localStorage.getItem("address") || ""
+  );
+  const [pin, setPin] = useState("");
 
   return (
     <div style={pageContainer}>
@@ -173,8 +191,8 @@ const [pin, setPin] = useState("");
               return;
             }
 
-localStorage.setItem("city", city);
-localStorage.setItem("address", address);
+            localStorage.setItem("city", city);
+            localStorage.setItem("address", address);
 
             setLoggedInTenant(tenants[0]);
             setCurrentHouse(house);
@@ -253,19 +271,21 @@ function BookingPage({ setView, tenant, house }) {
       return;
     }
 
-const { data: myBookings } = await supabase
-  .from("bookings")
-  .select("*")
-  .eq("tenant_id", tenant.id);
+    const { data: myBookings } = await supabase
+      .from("bookings")
+      .select("*")
+      .eq("tenant_id", tenant.id);
 
-const otherDayBooking = myBookings?.find(
-  (b) => b.date !== selectedDate
-);
+    const otherDayBooking = myBookings?.find(
+      (b) => b.date !== selectedDate
+    );
 
-if (otherDayBooking) {
-  alert("Du har redan en bokning på ett annat datum. Avboka den först om du vill byta dag.");
-  return;
-}
+    if (otherDayBooking) {
+      alert(
+        "Du har redan en bokning på ett annat datum. Avboka den först om du vill byta dag."
+      );
+      return;
+    }
 
     const { error } = await supabase.from("bookings").insert([
       {
@@ -375,25 +395,94 @@ if (otherDayBooking) {
   );
 }
 
-function LandlordLogin({ setView }) {
+function LandlordLogin({ setView, setLandlordHouses }) {
+  const [companyName, setCompanyName] = useState("");
+  const [pin, setPin] = useState("");
+
   return (
     <div style={pageContainer}>
       <div style={card}>
         <h2 style={pageTitle}>Hyresvärd</h2>
         <p style={pageText}>Logga in och hantera dina fastigheter.</p>
 
-        <input style={inputStyle} placeholder="Företagsnamn" />
+        <input
+          style={inputStyle}
+          placeholder="Företagsnamn"
+          value={companyName}
+          onChange={(e) => setCompanyName(e.target.value)}
+        />
+
         <input
           style={inputStyle}
           placeholder="PIN-kod"
           type="password"
           inputMode="numeric"
+          value={pin}
+          onChange={(e) => setPin(e.target.value)}
         />
 
-        <button style={primaryButton}>Logga in</button>
+        <button
+          style={primaryButton}
+          onClick={async () => {
+            const { data: houses, error } = await supabase
+              .from("houses")
+              .select("*")
+              .eq("company_name", companyName)
+              .eq("landlord_pin", pin);
+
+            if (error) {
+              console.log("LANDLORD LOGIN ERROR:", error);
+              alert("Kunde inte logga in");
+              return;
+            }
+
+            if (!houses || houses.length === 0) {
+              alert("Fel företagsnamn eller PIN");
+              return;
+            }
+
+            setLandlordHouses(houses);
+            setView("landlordHome");
+          }}
+        >
+          Logga in
+        </button>
 
         <button style={backButton} onClick={() => setView("start")}>
           ← Tillbaka
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function LandlordHome({
+  setView,
+  houses,
+  setSelectedLandlordHouse,
+})
+  return (
+    <div style={pageContainer}>
+      <div style={card}>
+        <h2 style={pageTitle}>Hyresvärd</h2>
+
+        <h3>Mina fastigheter</h3>
+
+        {houses.map((house) => (
+  <button
+    key={house.id}
+    style={primaryButton}
+    onClick={() => {
+      setSelectedLandlordHouse(house);
+      setView("houseDetails");
+    }}
+  >
+    {house.address}, {house.city}
+  </button>
+))}
+
+        <button style={backButton} onClick={() => setView("start")}>
+          Logga ut
         </button>
       </div>
     </div>
@@ -583,7 +672,7 @@ const backButton = {
   fontSize: "14px",
   cursor: "pointer",
   marginTop: "4px",
-};
+};d
 
 
 
