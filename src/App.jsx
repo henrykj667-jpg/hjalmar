@@ -511,10 +511,14 @@ function LandlordHome({ setView, houses, setSelectedLandlordHouse }) {
 
 function LandlordHousePage({ setView, house }) {
   const [bookings, setBookings] = useState([]);
+  const [tenants, setTenants] = useState([]);
   const [notice, setNotice] = useState(house?.notice || "");
+  const [newTenantName, setNewTenantName] = useState("");
+  const [newTenantPin, setNewTenantPin] = useState("");
 
   useEffect(() => {
     loadBookings();
+    loadTenants();
   }, []);
 
   async function loadBookings() {
@@ -527,6 +531,15 @@ function LandlordHousePage({ setView, house }) {
       .eq("date", today);
 
     setBookings(data || []);
+  }
+
+  async function loadTenants() {
+    const { data } = await supabase
+      .from("tenants")
+      .select("*")
+      .eq("house_id", house.id);
+
+    setTenants(data || []);
   }
 
   async function saveNotice() {
@@ -542,6 +555,28 @@ function LandlordHousePage({ setView, house }) {
     }
 
     alert("Anslag sparat");
+  }
+
+  async function addTenant() {
+    const { error } = await supabase.from("tenants").insert([
+      {
+        house_id: house.id,
+        name: newTenantName,
+        pin: newTenantPin,
+      },
+    ]);
+
+    if (error) {
+      console.log("TENANT ERROR:", error);
+      alert("Kunde inte lägga till hyresgäst");
+      return;
+    }
+
+    alert("Hyresgäst tillagd!");
+
+    loadTenants();
+    setNewTenantName("");
+    setNewTenantPin("");
   }
 
   return (
@@ -578,6 +613,30 @@ function LandlordHousePage({ setView, house }) {
             </div>
           ))
         )}
+
+        <h3>👥 Hyresgäster</h3>
+
+        {tenants.map((tenant) => (
+          <div key={tenant.id}>👤 {tenant.name}</div>
+        ))}
+
+        <input
+          style={inputStyle}
+          placeholder="Namn"
+          value={newTenantName}
+          onChange={(e) => setNewTenantName(e.target.value)}
+        />
+
+        <input
+          style={inputStyle}
+          placeholder="PIN-kod"
+          value={newTenantPin}
+          onChange={(e) => setNewTenantPin(e.target.value)}
+        />
+
+        <button style={primaryButton} onClick={addTenant}>
+          Lägg till hyresgäst
+        </button>
 
         <button style={backButton} onClick={() => setView("landlordHome")}>
           ← Tillbaka
