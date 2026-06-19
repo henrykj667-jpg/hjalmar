@@ -2,9 +2,16 @@ import { useState, useEffect } from "react";
 import { supabase } from "./supabaseClient";
 
 export default function App() {
-  const [view, setView] = useState("start");
-  const [loggedInTenant, setLoggedInTenant] = useState(null);
-  const [currentHouse, setCurrentHouse] = useState(null);
+ const [view, setView] = useState(
+  localStorage.getItem("loggedInTenant") ? "tenantHome" : "start"
+);
+const [loggedInTenant, setLoggedInTenant] = useState(
+  JSON.parse(localStorage.getItem("loggedInTenant")) || null
+);
+
+const [currentHouse, setCurrentHouse] = useState(
+  JSON.parse(localStorage.getItem("currentHouse")) || null
+);
   const [landlordHouses, setLandlordHouses] = useState([]);
 const [selectedLandlordHouse, setSelectedLandlordHouse] = useState(null);
   window.onpopstate = () => {
@@ -204,6 +211,8 @@ function TenantLogin({ setView, setLoggedInTenant, setCurrentHouse }) {
             localStorage.setItem("city", city);
             localStorage.setItem("address", address);
 localStorage.setItem("tenantName", name);
+localStorage.setItem("loggedInTenant", JSON.stringify(tenants[0]));
+localStorage.setItem("currentHouse", JSON.stringify(house));
             setLoggedInTenant(tenants[0]);
             setCurrentHouse(house);
             setView("tenantHome");
@@ -626,6 +635,24 @@ function LandlordHousePage({ setView, house }) {
     await loadTenants();
     alert("Hyresgäst borttagen");
   }
+
+async function deleteBooking(id) {
+  if (!window.confirm("Ta bort bokningen?")) return;
+
+  const { error } = await supabase
+    .from("bookings")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.log("DELETE BOOKING ERROR:", error);
+    alert("Kunde inte ta bort bokningen");
+    return;
+  }
+
+  await loadBookings();
+  alert("Bokning borttagen");
+}
 
   return (
     <div style={pageContainer}>
