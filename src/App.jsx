@@ -456,11 +456,7 @@ function LandlordLogin({ setView, setLandlordHouses }) {
   );
 }
 
-function LandlordHome({
-  setView,
-  houses,
-  setSelectedLandlordHouse,
-})
+function LandlordHome({ setView, houses, setSelectedLandlordHouse }) {
   return (
     <div style={pageContainer}>
       <div style={card}>
@@ -483,6 +479,43 @@ function LandlordHome({
 
         <button style={backButton} onClick={() => setView("start")}>
           Logga ut
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function LandlordHousePage({ setView, house }) {
+  return (
+    <div style={pageContainer}>
+      <div style={card}>
+        <h2 style={pageTitle}>{house?.address}</h2>
+
+        <p style={pageText}>{house?.city}</p>
+
+        <h3>📌 Anslagstavla</h3>
+
+        <div
+          style={{
+            background: "#f3f4f6",
+            padding: "15px",
+            borderRadius: "12px",
+          }}
+        >
+          Tvättmaskin 2 ur funktion
+        </div>
+
+        <h3>📅 Dagens bokningar</h3>
+
+        <div>07:00-14:00 Henrik</div>
+
+        <div>14:00-21:00 Ledig</div>
+
+        <button
+          style={backButton}
+          onClick={() => setView("landlordHome")}
+        >
+          ← Tillbaka
         </button>
       </div>
     </div>
@@ -672,9 +705,5 @@ const backButton = {
   fontSize: "14px",
   cursor: "pointer",
   marginTop: "4px",
-};d
-
-
-
-
+};
 
