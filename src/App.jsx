@@ -122,7 +122,9 @@ function TenantLogin({ setView, setLoggedInTenant, setCurrentHouse }) {
   const [address, setAddress] = useState(
     localStorage.getItem("address") || ""
   );
-  const [name, setName] = useState("");
+  const [name, setName] = useState(
+  localStorage.getItem("tenantName") || ""
+);
   const [pin, setPin] = useState("");
 
   return (
@@ -201,7 +203,7 @@ function TenantLogin({ setView, setLoggedInTenant, setCurrentHouse }) {
 
             localStorage.setItem("city", city);
             localStorage.setItem("address", address);
-
+localStorage.setItem("tenantName", name);
             setLoggedInTenant(tenants[0]);
             setCurrentHouse(house);
             setView("tenantHome");
