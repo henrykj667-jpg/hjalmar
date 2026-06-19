@@ -339,6 +339,21 @@ function BookingPage({ setView, tenant, house }) {
         />
 
         <p style={pageText}>{house?.address}</p>
+        {house?.notice && (
+  <div
+    style={{
+      background: "#fef3c7",
+      padding: "15px",
+      borderRadius: "12px",
+      marginBottom: "15px",
+      whiteSpace: "pre-line",
+    }}
+  >
+    <strong>📌 Meddelande från hyresvärden</strong>
+    <br />
+    {house.notice}
+  </div>
+)}
         <p style={pageText}>Datum: {selectedDate}</p>
 
         <button
