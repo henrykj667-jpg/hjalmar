@@ -236,6 +236,8 @@ function BookingPage({ setView, tenant, house }) {
   const [selectedDate, setSelectedDate] = useState(today);
   const [bookings, setBookings] = useState([]);
 
+  
+
   const morningBooked = bookings.find((b) =>
     b.start_time.startsWith("07:00")
   );
@@ -492,6 +494,7 @@ function LandlordHome({ setView, houses, setSelectedLandlordHouse }) {
 
 function LandlordHousePage({ setView, house }) {
   const [bookings, setBookings] = useState([]);
+  const [notice, setNotice] = useState(house?.notice || "");
 
   useEffect(() => {
     loadBookings();
@@ -508,41 +511,58 @@ function LandlordHousePage({ setView, house }) {
 
     setBookings(data || []);
   }
+
+  async function saveNotice() {
+    const { error } = await supabase
+      .from("houses")
+      .update({ notice })
+      .eq("id", house.id);
+
+    if (error) {
+      console.log("NOTICE ERROR:", error);
+      alert("Kunde inte spara anslaget");
+      return;
+    }
+
+    alert("Anslag sparat");
+  }
+
   return (
     <div style={pageContainer}>
       <div style={card}>
         <h2 style={pageTitle}>{house?.address}</h2>
-
         <p style={pageText}>{house?.city}</p>
 
         <h3>📌 Anslagstavla</h3>
 
-        <div
+        <textarea
           style={{
-            background: "#f3f4f6",
-            padding: "15px",
-            borderRadius: "12px",
+            ...inputStyle,
+            minHeight: "90px",
+            resize: "vertical",
           }}
-        >
-          Tvättmaskin 2 ur funktion
-        </div>
+          placeholder="Skriv meddelande till hyresgästerna..."
+          value={notice}
+          onChange={(e) => setNotice(e.target.value)}
+        />
+
+        <button style={primaryButton} onClick={saveNotice}>
+          Spara anslag
+        </button>
 
         <h3>📅 Dagens bokningar</h3>
 
-       {bookings.length === 0 ? (
-  <p>Inga bokningar idag.</p>
-) : (
-  bookings.map((booking) => (
-    <div key={booking.id}>
-      {booking.start_time} - {booking.end_time} ({booking.name})
-    </div>
-  ))
-)}
+        {bookings.length === 0 ? (
+          <p>Inga bokningar idag.</p>
+        ) : (
+          bookings.map((booking) => (
+            <div key={booking.id}>
+              {booking.start_time} - {booking.end_time} ({booking.name})
+            </div>
+          ))
+        )}
 
-        <button
-          style={backButton}
-          onClick={() => setView("landlordHome")}
-        >
+        <button style={backButton} onClick={() => setView("landlordHome")}>
           ← Tillbaka
         </button>
       </div>
