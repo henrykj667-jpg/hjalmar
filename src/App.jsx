@@ -579,6 +579,25 @@ function LandlordHousePage({ setView, house }) {
     setNewTenantPin("");
   }
 
+async function deleteTenant(id) {
+  if (!window.confirm("Ta bort hyresgästen?")) return;
+
+  const { error } = await supabase
+    .from("tenants")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.log(error);
+    alert("Kunde inte ta bort hyresgästen");
+    return;
+  }
+
+  loadTenants();
+
+  alert("Hyresgäst borttagen");
+}
+  
   return (
     <div style={pageContainer}>
       <div style={card}>
@@ -616,9 +635,33 @@ function LandlordHousePage({ setView, house }) {
 
         <h3>👥 Hyresgäster</h3>
 
-        {tenants.map((tenant) => (
-          <div key={tenant.id}>👤 {tenant.name}</div>
-        ))}
+       {tenants.map((tenant) => (
+  <div
+    key={tenant.id}
+    style={{
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: "10px",
+    }}
+  >
+    <div>👤 {tenant.name}</div>
+
+    <button
+      style={{
+        background: "#ef4444",
+        color: "white",
+        border: "none",
+        borderRadius: "8px",
+        padding: "5px 10px",
+        cursor: "pointer",
+      }}
+      onClick={() => deleteTenant(tenant.id)}
+    >
+      ❌
+    </button>
+  </div>
+))}
 
         <input
           style={inputStyle}
