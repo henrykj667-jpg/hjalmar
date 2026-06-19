@@ -413,7 +413,9 @@ function BookingPage({ setView, tenant, house }) {
 }
 
 function LandlordLogin({ setView, setLandlordHouses }) {
-  const [companyName, setCompanyName] = useState("");
+ const [companyName, setCompanyName] = useState(
+  localStorage.getItem("companyName") || ""
+);
   const [pin, setPin] = useState("");
 
   return (
@@ -462,7 +464,7 @@ console.log("PIN:", pin);
               alert("Fel företagsnamn eller PIN");
               return;
             }
-
+localStorage.setItem("companyName", companyName);
             setLandlordHouses(houses);
             setView("landlordHome");
           }}
