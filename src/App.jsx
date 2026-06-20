@@ -280,54 +280,68 @@ function BookingPage({ setView, tenant, house }) {
   }
 
   async function bookSlot(startTime, endTime) {
-    const { data: existing } = await supabase
-      .from("bookings")
-      .select("*")
-      .eq("house_id", house.id)
-      .eq("date", selectedDate)
-      .eq("start_time", startTime);
+  const maxBookingDays = house?.max_booking_days || 1;
+  const maxSlotsPerDay = house?.max_slots_per_day || 2;
 
-    if (existing && existing.length > 0) {
-      alert("Passet är redan bokat");
-      return;
-    }
+  const { data: existing } = await supabase
+    .from("bookings")
+    .select("*")
+    .eq("house_id", house.id)
+    .eq("date", selectedDate)
+    .eq("start_time", startTime);
 
-    const { data: myBookings } = await supabase
-      .from("bookings")
-      .select("*")
-      .eq("tenant_id", tenant.id);
-
-    const otherDayBooking = myBookings?.find(
-      (b) => b.date !== selectedDate
-    );
-
-    if (otherDayBooking) {
-      alert(
-        "Du har redan en bokning på ett annat datum. Avboka den först om du vill byta dag."
-      );
-      return;
-    }
-
-    const { error } = await supabase.from("bookings").insert([
-      {
-        house_id: house.id,
-        tenant_id: tenant.id,
-        name: tenant.name,
-        date: selectedDate,
-        start_time: startTime,
-        end_time: endTime,
-      },
-    ]);
-
-    if (error) {
-      console.log("BOOKING ERROR:", error);
-      alert("Kunde inte boka tiden");
-      return;
-    }
-
-    loadBookings();
-    alert("Tvättid bokad!");
+  if (existing && existing.length > 0) {
+    alert("Passet är redan bokat");
+    return;
   }
+
+  const { data: myBookings } = await supabase
+    .from("bookings")
+    .select("*")
+    .eq("tenant_id", tenant.id);
+
+  const uniqueDates = [...new Set((myBookings || []).map((b) => b.date))];
+
+  const alreadyHasThisDate = uniqueDates.includes(selectedDate);
+
+  if (!alreadyHasThisDate && uniqueDates.length >= maxBookingDays) {
+    alert(
+      `Du kan bara ha bokningar på ${maxBookingDays} dag(ar) åt gången.`
+    );
+    return;
+  }
+
+  const bookingsThisDay = (myBookings || []).filter(
+    (b) => b.date === selectedDate
+  );
+
+  if (bookingsThisDay.length >= maxSlotsPerDay) {
+    alert(
+      `Du kan bara boka ${maxSlotsPerDay} pass samma dag.`
+    );
+    return;
+  }
+
+  const { error } = await supabase.from("bookings").insert([
+    {
+      house_id: house.id,
+      tenant_id: tenant.id,
+      name: tenant.name,
+      date: selectedDate,
+      start_time: startTime,
+      end_time: endTime,
+    },
+  ]);
+
+  if (error) {
+    console.log("BOOKING ERROR:", error);
+    alert("Kunde inte boka tiden");
+    return;
+  }
+
+  loadBookings();
+  alert("Tvättid bokad!");
+}
 
   async function cancelBooking(bookingId) {
     const { error } = await supabase
