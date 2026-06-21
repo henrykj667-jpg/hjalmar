@@ -295,16 +295,24 @@ function BookingPage({ setView, tenant, house }) {
   const today = new Date().toISOString().split("T")[0];
   const [selectedDate, setSelectedDate] = useState(today);
   const [bookings, setBookings] = useState([]);
-
-  
+  const [monthBookings, setMonthBookings] = useState([]);
 
   const washSlots = house?.wash_slots || [
-  { start: "07:00", end: "14:00" },
-  { start: "14:00", end: "21:00" },
-];
+    { start: "07:00", end: "14:00" },
+    { start: "14:00", end: "21:00" },
+  ];
+
+  const firstDay = new Date(selectedDate.slice(0, 7) + "-01").getDay();
+  const emptyDays = firstDay === 0 ? 6 : firstDay - 1;
+  const daysInMonth = new Date(
+    Number(selectedDate.slice(0, 4)),
+    Number(selectedDate.slice(5, 7)),
+    0
+  ).getDate();
 
   useEffect(() => {
     loadBookings();
+    loadMonthBookings();
   }, [selectedDate]);
 
   async function loadBookings() {
@@ -317,69 +325,79 @@ function BookingPage({ setView, tenant, house }) {
     setBookings(data || []);
   }
 
+  async function loadMonthBookings() {
+    const monthStart = selectedDate.slice(0, 8) + "01";
+    const monthEnd = selectedDate.slice(0, 8) + String(daysInMonth).padStart(2, "0");
+
+    const { data } = await supabase
+      .from("bookings")
+      .select("*")
+      .eq("house_id", house.id)
+      .gte("date", monthStart)
+      .lte("date", monthEnd);
+
+    setMonthBookings(data || []);
+  }
+
   async function bookSlot(startTime, endTime) {
-  const maxBookingDays = house?.max_booking_days || 1;
-  const maxSlotsPerDay = house?.max_slots_per_day || 2;
+    const maxBookingDays = house?.max_booking_days || 1;
+    const maxSlotsPerDay = house?.max_slots_per_day || 2;
 
-  const { data: existing } = await supabase
-    .from("bookings")
-    .select("*")
-    .eq("house_id", house.id)
-    .eq("date", selectedDate)
-    .eq("start_time", startTime);
+    const { data: existing } = await supabase
+      .from("bookings")
+      .select("*")
+      .eq("house_id", house.id)
+      .eq("date", selectedDate)
+      .eq("start_time", startTime);
 
-  if (existing && existing.length > 0) {
-    alert("Passet är redan bokat");
-    return;
-  }
+    if (existing && existing.length > 0) {
+      alert("Passet är redan bokat");
+      return;
+    }
 
-  const { data: myBookings } = await supabase
-    .from("bookings")
-    .select("*")
-    .eq("tenant_id", tenant.id);
+    const { data: myBookings } = await supabase
+      .from("bookings")
+      .select("*")
+      .eq("tenant_id", tenant.id);
 
-  const uniqueDates = [...new Set((myBookings || []).map((b) => b.date))];
+    const uniqueDates = [...new Set((myBookings || []).map((b) => b.date))];
+    const alreadyHasThisDate = uniqueDates.includes(selectedDate);
 
-  const alreadyHasThisDate = uniqueDates.includes(selectedDate);
+    if (!alreadyHasThisDate && uniqueDates.length >= maxBookingDays) {
+      alert(`Du kan bara ha bokningar på ${maxBookingDays} dag(ar) åt gången.`);
+      return;
+    }
 
-  if (!alreadyHasThisDate && uniqueDates.length >= maxBookingDays) {
-    alert(
-      `Du kan bara ha bokningar på ${maxBookingDays} dag(ar) åt gången.`
+    const bookingsThisDay = (myBookings || []).filter(
+      (b) => b.date === selectedDate
     );
-    return;
+
+    if (bookingsThisDay.length >= maxSlotsPerDay) {
+      alert(`Du kan bara boka ${maxSlotsPerDay} pass samma dag.`);
+      return;
+    }
+
+    const { error } = await supabase.from("bookings").insert([
+      {
+        house_id: house.id,
+        tenant_id: tenant.id,
+        name: tenant.name,
+        date: selectedDate,
+        start_time: startTime,
+        end_time: endTime,
+      },
+    ]);
+
+    if (error) {
+      console.log("BOOKING ERROR:", error);
+      alert("Kunde inte boka tiden");
+      return;
+    }
+
+    await loadBookings();
+    await loadMonthBookings();
+    alert("Tvättid bokad!");
   }
-
-  const bookingsThisDay = (myBookings || []).filter(
-    (b) => b.date === selectedDate
-  );
-
-  if (bookingsThisDay.length >= maxSlotsPerDay) {
-    alert(
-      `Du kan bara boka ${maxSlotsPerDay} pass samma dag.`
-    );
-    return;
-  }
-
-  const { error } = await supabase.from("bookings").insert([
-    {
-      house_id: house.id,
-      tenant_id: tenant.id,
-      name: tenant.name,
-      date: selectedDate,
-      start_time: startTime,
-      end_time: endTime,
-    },
-  ]);
-
-  if (error) {
-    console.log("BOOKING ERROR:", error);
-    alert("Kunde inte boka tiden");
-    return;
-  }
-
-  loadBookings();
-  alert("Tvättid bokad!");
-}
 
   async function cancelBooking(bookingId) {
     const { error } = await supabase
@@ -393,8 +411,17 @@ function BookingPage({ setView, tenant, house }) {
       return;
     }
 
-    loadBookings();
+    await loadBookings();
+    await loadMonthBookings();
     alert("Tiden är avbokad");
+  }
+
+  function changeMonth(monthChange) {
+    const currentDate = new Date(selectedDate);
+    currentDate.setMonth(currentDate.getMonth() + monthChange);
+    currentDate.setDate(1);
+
+    setSelectedDate(currentDate.toISOString().split("T")[0]);
   }
 
   return (
@@ -410,43 +437,163 @@ function BookingPage({ setView, tenant, house }) {
         />
 
         <p style={pageText}>{house?.address}</p>
+
         {house?.notice && (
-  <div
-    style={{
-      background: "#fef3c7",
-      padding: "15px",
-      borderRadius: "12px",
-      marginBottom: "15px",
-      whiteSpace: "pre-line",
-    }}
-  >
-    <strong>📌 Meddelande från hyresvärden</strong>
-    <br />
-    {house.notice}
+          <div
+            style={{
+              background: "#fef3c7",
+              padding: "15px",
+              borderRadius: "12px",
+              marginBottom: "15px",
+              whiteSpace: "pre-line",
+            }}
+          >
+            <strong>📌 Meddelande från hyresvärden</strong>
+            <br />
+            {house.notice}
+          </div>
+        )}
+
+        <p style={pageText}>Datum: {selectedDate}</p>
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "8px",
+          }}
+        >
+          <button style={backButton} onClick={() => changeMonth(-1)}>
+            ←
+          </button>
+
+          <h3 style={{ margin: 0 }}>
+            {new Date(selectedDate).toLocaleDateString("sv-SE", {
+              month: "long",
+              year: "numeric",
+            })}
+          </h3>
+
+          <button style={backButton} onClick={() => changeMonth(1)}>
+            →
+          </button>
+        </div>
+
+        <div style={calendarHeader}>
+          <span>Må</span>
+          <span>Ti</span>
+          <span>On</span>
+          <span>To</span>
+          <span>Fr</span>
+          <span>Lö</span>
+          <span>Sö</span>
+        </div>
+
+        <div style={calendarGrid}>
+          {[
+            ...Array(emptyDays).fill(null),
+            ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+          ].map((day, index) => {
+            if (!day) {
+              return <div key={`empty-${index}`}></div>;
+            }
+
+            const date =
+              selectedDate.slice(0, 8) + String(day).padStart(2, "0");
+
+            const bookingsForDay = monthBookings.filter(
+              (booking) => booking.date === date
+            );
+
+const bookingCount = bookingsForDay.length;
+
+const myBooking = bookingsForDay.some(
+  (booking) => booking.tenant_id === tenant.id
+);
+
+
+
+            const isSelected = date === selectedDate;
+
+            return (
+              <button
+                key={date}
+                style={{
+  ...calendarDay,
+  background:
+    isSelected
+      ? "#1f6feb"
+      : myBooking
+      ? "#93c5fd"
+      : bookingsForDay.length >= washSlots.length
+      ? "#fca5a5"
+      : bookingsForDay.length > 0
+      ? "#fde68a"
+      : "#bbf7d0",
+
+  color: isSelected ? "white" : "#111827",
+
+  border:
+    date === today
+      ? "2px solid #111827"
+      : "none",
+}}
+                onClick={() => setSelectedDate(date)}
+              >
+                <div>
+  <div>{day}</div>
+
+  <div style={{ fontSize: "10px", marginTop: "3px" }}>
+    {myBooking ? "👤" : bookingCount > 0 ? bookingCount : ""}
   </div>
-)}
-   <p style={pageText}>Datum: {selectedDate}</p>
+</div>
+              </button>
+            );
+          })}
+        </div>
 
-{washSlots.map((slot) => {
-  const booked = bookings.find((b) =>
-    b.start_time.startsWith(slot.start)
-  );
+  <div style={{ fontSize: "13px", color: "#555", marginBottom: "12px" }}>
+  <span style={{ color: "#22c55e" }}>■</span> Ledig &nbsp;
+  <span style={{ color: "#f59e0b" }}>■</span> Delvis bokad &nbsp;
+  <span style={{ color: "#ef4444" }}>■</span> Fullbokad &nbsp;
+  <span style={{ color: "#93c5fd" }}>■</span> Min bokning &nbsp;
+  <span style={{ color: "#1f6feb" }}>■</span> Vald dag &nbsp;
+  ⚪ Idag
+</div>
 
-  return (
-    <button
-      key={slot.start}
-      style={{
-        ...primaryButton,
-        background: booked ? "#9ca3af" : "#4f75d8",
-      }}
-      onClick={() => bookSlot(slot.start, slot.end)}
-    >
-      {booked
-        ? `${slot.start}-${slot.end} Bokad av ${booked.name}`
-        : `${slot.start}-${slot.end}`}
-    </button>
-  );
-})}
+<h3>
+  📅 {new Date(selectedDate).toLocaleDateString("sv-SE", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  })}
+</h3>
+
+        {washSlots.map((slot) => {
+          const booked = bookings.find((b) =>
+            b.start_time.startsWith(slot.start)
+          );
+
+          return (
+            <button
+              key={slot.start}
+              style={{
+                ...primaryButton,
+                background: booked ? "#9ca3af" : "#4f75d8",
+              }}
+              onClick={() => bookSlot(slot.start, slot.end)}
+            >
+              <div>
+  <div>{slot.start}-{slot.end}</div>
+
+  <div style={{ fontSize: "12px", marginTop: "4px" }}>
+    {booked ? `Bokad av ${booked.name}` : "Ledig"}
+  </div>
+</div>
+            </button>
+          );
+        })}
 
         <h3>Dagens bokningar</h3>
 
@@ -517,6 +664,8 @@ function LandlordLogin({ setView, setLandlordHouses }) {
               .eq("company_name", companyName)
               .eq("landlord_pin", pin);
 
+              
+
               console.log("HOUSES:", houses);
 console.log("ERROR:", error);
 console.log("COMPANY:", companyName);
@@ -579,6 +728,9 @@ function LandlordHome({ setView, houses, setSelectedLandlordHouse }) {
 
 function LandlordHousePage({ setView, house }) {
   const [bookings, setBookings] = useState([]);
+  const today = new Date().toISOString().split("T")[0];
+const [selectedDate, setSelectedDate] = useState(today);
+const [monthBookings, setMonthBookings] = useState([]);
   const [tenants, setTenants] = useState([]);
   const [notice, setNotice] = useState(house?.notice || "");
   const [newTenantName, setNewTenantName] = useState("");
@@ -603,18 +755,19 @@ const [maxSlotsPerDay, setMaxSlotsPerDay] = useState(
   const [editPin, setEditPin] = useState("");
 
   useEffect(() => {
-    loadBookings();
-    loadTenants();
-  }, []);
+  loadBookings();
+  loadMonthBookings();
+  loadTenants();
+}, [selectedDate]);
 
   async function loadBookings() {
-    const today = new Date().toISOString().split("T")[0];
+   
 
     const { data } = await supabase
       .from("bookings")
       .select("*")
       .eq("house_id", house.id)
-      .eq("date", today);
+      .eq("date", selectedDate);
 
     setBookings(data || []);
   }
@@ -769,6 +922,47 @@ async function saveWashSlots() {
   alert("Tvättpass sparade");
 }
 
+async function loadMonthBookings() {
+  const monthStart = selectedDate.slice(0, 8) + "01";
+
+  const daysInMonth = new Date(
+    Number(selectedDate.slice(0, 4)),
+    Number(selectedDate.slice(5, 7)),
+    0
+  ).getDate();
+
+  const monthEnd =
+    selectedDate.slice(0, 8) + String(daysInMonth).padStart(2, "0");
+
+  const { data } = await supabase
+    .from("bookings")
+    .select("*")
+    .eq("house_id", house.id)
+    .gte("date", monthStart)
+    .lte("date", monthEnd);
+
+  setMonthBookings(data || []);
+}
+
+const firstDay = new Date(selectedDate.slice(0, 7) + "-01").getDay();
+const emptyDays = firstDay === 0 ? 6 : firstDay - 1;
+
+const daysInMonth = new Date(
+  Number(selectedDate.slice(0, 4)),
+  Number(selectedDate.slice(5, 7)),
+  0
+).getDate();
+
+
+
+function changeMonth(monthChange) {
+  const currentDate = new Date(selectedDate);
+  currentDate.setMonth(currentDate.getMonth() + monthChange);
+  currentDate.setDate(1);
+
+  setSelectedDate(currentDate.toISOString().split("T")[0]);
+}
+
   return (
     <div style={pageContainer}>
       <div style={card}>
@@ -873,7 +1067,111 @@ async function saveWashSlots() {
   Spara tvättpass
 </button>
 
-        <h3>📅 Dagens bokningar</h3>
+<h3>📅 Kalender</h3>
+
+<div
+  style={{
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "8px",
+  }}
+>
+  <button style={backButton} onClick={() => changeMonth(-1)}>
+    ←
+  </button>
+
+  <h3 style={{ margin: 0 }}>
+    {new Date(selectedDate).toLocaleDateString("sv-SE", {
+      month: "long",
+      year: "numeric",
+    })}
+  </h3>
+
+  <button style={backButton} onClick={() => changeMonth(1)}>
+    →
+  </button>
+</div>
+
+<div style={calendarHeader}>
+  <span>Må</span>
+  <span>Ti</span>
+  <span>On</span>
+  <span>To</span>
+  <span>Fr</span>
+  <span>Lö</span>
+  <span>Sö</span>
+</div>
+
+<div style={calendarGrid}>
+  {[
+  ...Array(emptyDays).fill(null),
+  ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+  ...Array(
+    42 -
+      (emptyDays + daysInMonth)
+  ).fill(null),
+].map((day, index) => {
+   if (!day) {
+  return (
+    <div
+      key={`empty-${index}`}
+      style={{
+        ...calendarDay,
+        background: "#f3f4f6",
+        visibility: "hidden",
+      }}
+    />
+  );
+}
+    const date =
+      selectedDate.slice(0, 8) + String(day).padStart(2, "0");
+
+    const bookingsForDay = monthBookings.filter(
+      (booking) => booking.date === date
+    );
+
+    const isSelected = date === selectedDate;
+
+    return (
+      <button
+        key={date}
+        style={{
+          ...calendarDay,
+          background: isSelected
+            ? "#1f6feb"
+            : bookingsForDay.length >= washSlots.length
+            ? "#fca5a5"
+            : bookingsForDay.length > 0
+            ? "#fde68a"
+            : "#bbf7d0",
+          color: isSelected ? "white" : "#111827",
+            border:
+    date === today
+      ? "2px solid #111827"
+      : "none",
+        }}
+
+
+        onClick={() => setSelectedDate(date)}
+      >
+        <div>{day}</div>
+        <div style={{ fontSize: "10px", marginTop: "3px" }}>
+          {bookingsForDay.length > 0 ? bookingsForDay.length : ""}
+        </div>
+      </button>
+    );
+  })}
+</div>
+
+<div style={{ fontSize: "13px", color: "#555", marginBottom: "12px" }}>
+  <span style={{ color: "#22c55e" }}>■</span> Ledig &nbsp;
+  <span style={{ color: "#f59e0b" }}>■</span> Delvis bokad &nbsp;
+  <span style={{ color: "#ef4444" }}>■</span> Fullbokad &nbsp;
+  <span style={{ color: "#1f6feb" }}>■</span> Vald dag
+</div>
+
+        <h3>📅 Bokningar {selectedDate}</h3>
 
         {bookings.length === 0 ? (
   <p>Inga bokningar idag.</p>
@@ -1122,6 +1420,17 @@ const adminButton = {
   gap: "10px",
 };
 
+const calendarHeader = {
+  display: "grid",
+  gridTemplateColumns: "repeat(7, 1fr)",
+  gap: "6px",
+  marginBottom: "6px",
+  textAlign: "center",
+  fontSize: "13px",
+  fontWeight: "700",
+  color: "#555",
+};
+
 const pageContainer = {
   minHeight: "100vh",
   display: "flex",
@@ -1156,6 +1465,21 @@ const pageText = {
   color: "#555",
   textAlign: "center",
   fontSize: "15px",
+};
+
+const calendarGrid = {
+  display: "grid",
+  gridTemplateColumns: "repeat(7, 1fr)",
+  gap: "6px",
+  marginBottom: "15px",
+};
+
+const calendarDay = {
+  padding: "10px 0",
+  borderRadius: "10px",
+  border: "none",
+  fontWeight: "700",
+  cursor: "pointer",
 };
 
 const inputStyle = {
