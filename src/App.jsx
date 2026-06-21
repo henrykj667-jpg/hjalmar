@@ -230,6 +230,27 @@ localStorage.setItem("currentHouse", JSON.stringify(house));
 }
 
 function TenantHome({ setView, tenant, house }) {
+  const [upcomingBookings, setUpcomingBookings] = useState([]);
+
+  useEffect(() => {
+    loadUpcomingBookings();
+  }, []);
+
+  async function loadUpcomingBookings() {
+    const today = new Date().toISOString().split("T")[0];
+
+    const { data } = await supabase
+      .from("bookings")
+      .select("*")
+      .eq("house_id", house.id)
+      .gte("date", today)
+      .order("date", { ascending: true })
+      .order("start_time", { ascending: true })
+      .limit(10);
+
+    setUpcomingBookings(data || []);
+  }
+
   return (
     <div style={pageContainer}>
       <div style={card}>
@@ -238,11 +259,31 @@ function TenantHome({ setView, tenant, house }) {
           {house?.address}, {house?.city}
         </p>
 
+        <h3>📅 Kommande bokningar</h3>
+
+        {upcomingBookings.length === 0 ? (
+          <p>Inga kommande bokningar.</p>
+        ) : (
+          upcomingBookings.map((booking) => (
+            <div key={booking.id}>
+              {booking.date} — {booking.start_time} - {booking.end_time} (
+              {booking.name})
+            </div>
+          ))
+        )}
+
         <button style={primaryButton} onClick={() => setView("booking")}>
           Boka tvättid
         </button>
 
-        <button style={backButton} onClick={() => setView("start")}>
+        <button
+          style={backButton}
+          onClick={() => {
+            localStorage.removeItem("loggedInTenant");
+            localStorage.removeItem("currentHouse");
+            setView("start");
+          }}
+        >
           Logga ut
         </button>
       </div>
@@ -257,13 +298,10 @@ function BookingPage({ setView, tenant, house }) {
 
   
 
-  const morningBooked = bookings.find((b) =>
-    b.start_time.startsWith("07:00")
-  );
-
-  const afternoonBooked = bookings.find((b) =>
-    b.start_time.startsWith("14:00")
-  );
+  const washSlots = house?.wash_slots || [
+  { start: "07:00", end: "14:00" },
+  { start: "14:00", end: "21:00" },
+];
 
   useEffect(() => {
     loadBookings();
@@ -387,31 +425,28 @@ function BookingPage({ setView, tenant, house }) {
     {house.notice}
   </div>
 )}
-        <p style={pageText}>Datum: {selectedDate}</p>
+   <p style={pageText}>Datum: {selectedDate}</p>
 
-        <button
-          style={{
-            ...primaryButton,
-            background: morningBooked ? "#9ca3af" : "#4f75d8",
-          }}
-          onClick={() => bookSlot("07:00", "14:00")}
-        >
-          {morningBooked
-            ? `07:00–14:00 Bokad av ${morningBooked.name}`
-            : "07:00–14:00"}
-        </button>
+{washSlots.map((slot) => {
+  const booked = bookings.find((b) =>
+    b.start_time.startsWith(slot.start)
+  );
 
-        <button
-          style={{
-            ...primaryButton,
-            background: afternoonBooked ? "#9ca3af" : "#4f75d8",
-          }}
-          onClick={() => bookSlot("14:00", "21:00")}
-        >
-          {afternoonBooked
-            ? `14:00–21:00 Bokad av ${afternoonBooked.name}`
-            : "14:00–21:00"}
-        </button>
+  return (
+    <button
+      key={slot.start}
+      style={{
+        ...primaryButton,
+        background: booked ? "#9ca3af" : "#4f75d8",
+      }}
+      onClick={() => bookSlot(slot.start, slot.end)}
+    >
+      {booked
+        ? `${slot.start}-${slot.end} Bokad av ${booked.name}`
+        : `${slot.start}-${slot.end}`}
+    </button>
+  );
+})}
 
         <h3>Dagens bokningar</h3>
 
@@ -548,6 +583,22 @@ function LandlordHousePage({ setView, house }) {
   const [notice, setNotice] = useState(house?.notice || "");
   const [newTenantName, setNewTenantName] = useState("");
   const [newTenantPin, setNewTenantPin] = useState("");
+const [washSlots, setWashSlots] = useState(
+  house?.wash_slots || [
+    { start: "07:00", end: "14:00" },
+    { start: "14:00", end: "21:00" },
+  ]
+);
+const [newSlotStart, setNewSlotStart] = useState("");
+const [newSlotEnd, setNewSlotEnd] = useState("");
+  
+const [maxBookingDays, setMaxBookingDays] = useState(
+  house?.max_booking_days || 1
+);
+const [maxSlotsPerDay, setMaxSlotsPerDay] = useState(
+  house?.max_slots_per_day || 2
+);
+
   const [editingTenantId, setEditingTenantId] = useState(null);
   const [editPin, setEditPin] = useState("");
 
@@ -668,6 +719,56 @@ async function deleteBooking(id) {
   alert("Bokning borttagen");
 }
 
+async function saveBookingRules() {
+  const { error } = await supabase
+    .from("houses")
+    .update({
+      max_booking_days: Number(maxBookingDays),
+      max_slots_per_day: Number(maxSlotsPerDay),
+    })
+    .eq("id", house.id);
+
+  if (error) {
+    alert("Kunde inte spara reglerna");
+    return;
+  }
+
+  alert("Bokningsregler sparade");
+}
+
+function addWashSlot() {
+  if (!newSlotStart || !newSlotEnd) {
+    alert("Fyll i både starttid och sluttid");
+    return;
+  }
+
+  setWashSlots([
+    ...washSlots,
+    { start: newSlotStart, end: newSlotEnd },
+  ]);
+
+  setNewSlotStart("");
+  setNewSlotEnd("");
+}
+
+function removeWashSlot(index) {
+  setWashSlots(washSlots.filter((_, i) => i !== index));
+}
+
+async function saveWashSlots() {
+  const { error } = await supabase
+    .from("houses")
+    .update({ wash_slots: washSlots })
+    .eq("id", house.id);
+
+  if (error) {
+    alert("Kunde inte spara tvättpassen");
+    return;
+  }
+
+  alert("Tvättpass sparade");
+}
+
   return (
     <div style={pageContainer}>
       <div style={card}>
@@ -686,6 +787,91 @@ async function deleteBooking(id) {
         <button style={primaryButton} onClick={saveNotice}>
           Spara anslag
         </button>
+
+<h3>⚙️ Bokningsregler</h3>
+
+<p style={pageText}>Max antal bokade dagar</p>
+
+<input
+  style={inputStyle}
+  type="number"
+  min="1"
+  placeholder="Max bokade dagar"
+  value={maxBookingDays}
+  onChange={(e) => setMaxBookingDays(e.target.value)}
+/>
+
+<p style={pageText}>Max antal pass samma dag</p>
+
+<input
+  style={inputStyle}
+  type="number"
+  min="1"
+  placeholder="Max pass samma dag"
+  value={maxSlotsPerDay}
+  onChange={(e) => setMaxSlotsPerDay(e.target.value)}
+/>
+
+<button style={primaryButton} onClick={saveBookingRules}>
+  Spara bokningsregler
+</button>
+
+<h3>🧺 Tvättpass</h3>
+
+{washSlots.map((slot, index) => (
+  <div
+    key={index}
+    style={{
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: "10px",
+      gap: "8px",
+    }}
+  >
+    <div>
+      {slot.start} - {slot.end}
+    </div>
+
+    <button
+      style={{
+        background: "#ef4444",
+        color: "white",
+        border: "none",
+        borderRadius: "8px",
+        padding: "5px 10px",
+        cursor: "pointer",
+      }}
+      onClick={() => removeWashSlot(index)}
+    >
+      ❌
+    </button>
+  </div>
+))}
+
+
+
+<input
+  style={inputStyle}
+  placeholder="07:00"
+  value={newSlotStart}
+  onChange={(e) => setNewSlotStart(e.target.value)}
+/>
+
+<input
+  style={inputStyle}
+  placeholder="14:00"
+  value={newSlotEnd}
+  onChange={(e) => setNewSlotEnd(e.target.value)}
+/>
+
+<button style={primaryButton} onClick={addWashSlot}>
+  Lägg till tvättpass
+</button>
+
+<button style={primaryButton} onClick={saveWashSlots}>
+  Spara tvättpass
+</button>
 
         <h3>📅 Dagens bokningar</h3>
 
