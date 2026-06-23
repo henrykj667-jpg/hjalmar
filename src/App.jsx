@@ -400,6 +400,10 @@ function BookingPage({ setView, tenant, house }) {
   }
 
   async function cancelBooking(bookingId) {
+
+    if (!window.confirm("Vill du verkligen avboka tiden?")) {
+  return;
+}
     const { error } = await supabase
       .from("bookings")
       .delete()
