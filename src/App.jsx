@@ -633,7 +633,7 @@ const myBooking = bookingsForDay.some(
 
 <button
   style={primaryButton}
-  onClick={() => window.open("/manual.png", "_blank")}
+  onClick={() => window.open("/manual.png")}
 >
   ❓ Hjälp / Instruktioner
 </button>
