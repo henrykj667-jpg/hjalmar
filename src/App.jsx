@@ -38,6 +38,8 @@ const [selectedLandlordHouse, setSelectedLandlordHouse] = useState(null);
         />
       )}
 
+{view === "manual" && <ManualPage setView={setView} />}
+
       {view === "booking" && (
         <BookingPage
           setView={setView}
@@ -277,23 +279,22 @@ function TenantHome({ setView, tenant, house }) {
         </button>
 
         <button
-          style={backButton}
-          onClick={() => {
-            localStorage.removeItem("loggedInTenant");
-            localStorage.removeItem("currentHouse");
-            setView("start");
-          }}
->
-
-<button
   style={primaryButton}
-  onClick={() => window.open("/manual.png", "_blank")}
+  onClick={() => setView("manual")}
 >
   ❓ Hjälp / Instruktioner
 </button>
 
-          Logga ut
-        </button>
+<button
+  style={backButton}
+  onClick={() => {
+    localStorage.removeItem("loggedInTenant");
+    localStorage.removeItem("currentHouse");
+    setView("start");
+  }}
+>
+  Logga ut
+</button>
       </div>
     </div>
   );
@@ -633,7 +634,7 @@ const myBooking = bookingsForDay.some(
 
 <button
   style={primaryButton}
-  onClick={() => window.open("/manual.png")}
+ onClick={() => setView("manual")}
 >
   ❓ Hjälp / Instruktioner
 </button>
@@ -745,6 +746,34 @@ function LandlordHome({ setView, houses, setSelectedLandlordHouse }) {
     </div>
   );
 }
+
+function ManualPage({ setView }) {
+  return (
+    <div style={pageContainer}>
+      <div style={card}>
+        <h2 style={pageTitle}>Hjälp / Instruktioner</h2>
+
+        <img
+          src="/manual.png"
+          alt="Instruktionsmanual"
+          style={{
+            width: "100%",
+            borderRadius: "12px",
+            marginBottom: "15px",
+          }}
+        />
+
+        <button
+          style={backButton}
+          onClick={() => setView("tenantHome")}
+        >
+          ← Tillbaka
+        </button>
+      </div>
+    </div>
+  );
+}
+
 
 function LandlordHousePage({ setView, house }) {
   const [bookings, setBookings] = useState([]);
