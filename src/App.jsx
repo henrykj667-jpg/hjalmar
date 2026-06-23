@@ -283,7 +283,15 @@ function TenantHome({ setView, tenant, house }) {
             localStorage.removeItem("currentHouse");
             setView("start");
           }}
-        >
+>
+
+<button
+  style={primaryButton}
+  onClick={() => window.open("/manual.png", "_blank")}
+>
+  ❓ Hjälp / Instruktioner
+</button>
+
           Logga ut
         </button>
       </div>
@@ -622,6 +630,14 @@ const myBooking = bookingsForDay.some(
             )}
           </div>
         ))}
+
+<button
+  style={primaryButton}
+  onClick={() => window.open("/manual.png", "_blank")}
+>
+  ❓ Hjälp / Instruktioner
+</button>
+
 
         <button style={backButton} onClick={() => setView("tenantHome")}>
           ← Tillbaka
