@@ -364,10 +364,13 @@ function BookingPage({ setView, tenant, house }) {
       return;
     }
 
-    const { data: myBookings } = await supabase
-      .from("bookings")
-      .select("*")
-      .eq("tenant_id", tenant.id);
+    const today = new Date().toISOString().split("T")[0];
+
+const { data: myBookings } = await supabase
+  .from("bookings")
+  .select("*")
+  .eq("tenant_id", tenant.id)
+  .gte("date", today);
 
     const uniqueDates = [...new Set((myBookings || []).map((b) => b.date))];
     const alreadyHasThisDate = uniqueDates.includes(selectedDate);
