@@ -268,7 +268,7 @@ function TenantHome({ setView, tenant, house }) {
         ) : (
           upcomingBookings.map((booking) => (
             <div key={booking.id}>
-              {booking.date} — {booking.start_time} - {booking.end_time} (
+              {booking.date} — {booking.start_time.slice(0, 5)} - {booking.end_time.slice(0, 5)} (
               {booking.name})
             </div>
           ))
@@ -615,7 +615,7 @@ const myBooking = bookingsForDay.some(
 
         {bookings.map((booking) => (
           <div key={booking.id}>
-            {booking.start_time} - {booking.end_time} ({booking.name})
+            {booking.start_time.slice(0, 5)} - {booking.end_time.slice(0, 5)} ({booking.name})
 
             {booking.tenant_id === tenant.id && (
               <button
@@ -1239,7 +1239,7 @@ function changeMonth(monthChange) {
       }}
     >
       <div>
-        {booking.start_time} - {booking.end_time} ({booking.name})
+        {booking.start_time.slice(0, 5)} - {booking.end_time.slice(0, 5)} ({booking.name})
       </div>
 
       <button
