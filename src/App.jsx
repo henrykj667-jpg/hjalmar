@@ -1,6 +1,19 @@
 import { useState, useEffect } from "react";
 import { supabase } from "./supabaseClient";
 
+function getLocalDateString(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function isBookingActive(booking, now = new Date()) {
+  const endTime = booking.end_time.slice(0, 5);
+  const bookingEnd = new Date(`${booking.date}T${endTime}:00`);
+  return bookingEnd > now;
+}
+
 export default function App() {
  const [view, setView] = useState(
   localStorage.getItem("loggedInTenant") ? "tenantHome" : "start"
@@ -239,7 +252,7 @@ function TenantHome({ setView, tenant, house }) {
   }, []);
 
   async function loadUpcomingBookings() {
-    const today = new Date().toISOString().split("T")[0];
+    const today = getLocalDateString();
 
     const { data } = await supabase
       .from("bookings")
@@ -250,7 +263,7 @@ function TenantHome({ setView, tenant, house }) {
       .order("start_time", { ascending: true })
       .limit(10);
 
-    setUpcomingBookings(data || []);
+    setUpcomingBookings((data || []).filter((booking) => isBookingActive(booking)));
   }
 
   return (
@@ -301,7 +314,7 @@ function TenantHome({ setView, tenant, house }) {
 }
 
 function BookingPage({ setView, tenant, house }) {
-  const today = new Date().toISOString().split("T")[0];
+  const today = getLocalDateString();
   const [selectedDate, setSelectedDate] = useState(today);
   const [bookings, setBookings] = useState([]);
   const [monthBookings, setMonthBookings] = useState([]);
@@ -364,7 +377,7 @@ function BookingPage({ setView, tenant, house }) {
       return;
     }
 
-    const today = new Date().toISOString().split("T")[0];
+    const today = getLocalDateString();
 
 const { data: myBookings } = await supabase
   .from("bookings")
@@ -372,7 +385,10 @@ const { data: myBookings } = await supabase
   .eq("tenant_id", tenant.id)
   .gte("date", today);
 
-    const uniqueDates = [...new Set((myBookings || []).map((b) => b.date))];
+    const activeMyBookings = (myBookings || []).filter((booking) =>
+      isBookingActive(booking)
+    );
+    const uniqueDates = [...new Set(activeMyBookings.map((b) => b.date))];
     const alreadyHasThisDate = uniqueDates.includes(selectedDate);
 
     if (!alreadyHasThisDate && uniqueDates.length >= maxBookingDays) {
@@ -380,7 +396,7 @@ const { data: myBookings } = await supabase
       return;
     }
 
-    const bookingsThisDay = (myBookings || []).filter(
+    const bookingsThisDay = activeMyBookings.filter(
       (b) => b.date === selectedDate
     );
 
@@ -1563,4 +1579,3 @@ const backButton = {
   cursor: "pointer",
   marginTop: "4px",
 };
-
