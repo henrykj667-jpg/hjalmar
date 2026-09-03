@@ -14,6 +14,22 @@ function isBookingActive(booking, now = new Date()) {
   return bookingEnd > now;
 }
 
+function getFriendlyBookingDate(dateString) {
+  const bookingDate = new Date(`${dateString}T12:00:00`);
+  const today = new Date();
+  today.setHours(12, 0, 0, 0);
+  const daysAway = Math.round((bookingDate - today) / 86400000);
+
+  if (daysAway === 0) return "Idag";
+  if (daysAway === 1) return "Imorgon";
+
+  return bookingDate.toLocaleDateString("sv-SE", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+}
+
 export default function App() {
  const [view, setView] = useState(
   localStorage.getItem("loggedInTenant") ? "tenantHome" : "start"
@@ -266,6 +282,105 @@ function TenantHome({ setView, tenant, house }) {
     setUpcomingBookings((data || []).filter((booking) => isBookingActive(booking)));
   }
 
+  async function cancelUpcomingBooking(bookingId) {
+    if (!window.confirm("Vill du verkligen avboka tiden?")) return;
+
+    const { error } = await supabase
+      .from("bookings")
+      .delete()
+      .eq("id", bookingId)
+      .eq("tenant_id", tenant.id);
+
+    if (error) {
+      alert("Kunde inte avboka tiden");
+      return;
+    }
+
+    await loadUpcomingBookings();
+  }
+
+  const nextBooking = upcomingBookings[0];
+  const laterBookings = upcomingBookings.slice(1);
+
+  function BookingCard({ booking, featured = false }) {
+    const isMine = booking.tenant_id === tenant.id;
+    const bookingDate = new Date(`${booking.date}T12:00:00`);
+    const day = bookingDate.getDate();
+    const month = bookingDate
+      .toLocaleDateString("sv-SE", { month: "short" })
+      .replace(".", "")
+      .toUpperCase();
+
+    return (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "14px",
+          padding: featured ? "17px" : "14px",
+          borderRadius: "18px",
+          background: isMine
+            ? "linear-gradient(135deg, #e8f1ff, #dbeafe)"
+            : "#f8fafc",
+          border: isMine ? "1px solid #93c5fd" : "1px solid #e5e7eb",
+          boxShadow: featured ? "0 8px 22px rgba(31, 111, 235, 0.12)" : "none",
+        }}
+      >
+        <div
+          style={{
+            width: featured ? "58px" : "52px",
+            minWidth: featured ? "58px" : "52px",
+            height: featured ? "62px" : "56px",
+            borderRadius: "14px",
+            background: isMine ? "#1f6feb" : "#64748b",
+            color: "white",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <strong style={{ fontSize: featured ? "22px" : "19px", lineHeight: 1 }}>
+            {day}
+          </strong>
+          <span style={{ fontSize: "11px", fontWeight: "800", marginTop: "5px" }}>
+            {month}
+          </span>
+        </div>
+
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ color: "#475569", fontSize: "13px", fontWeight: "700" }}>
+            {getFriendlyBookingDate(booking.date)}
+          </div>
+          <div style={{ color: "#102f70", fontSize: featured ? "20px" : "17px", fontWeight: "900" }}>
+            {booking.start_time.slice(0, 5)}–{booking.end_time.slice(0, 5)}
+          </div>
+          <div style={{ color: "#64748b", fontSize: "13px", marginTop: "2px" }}>
+            {booking.name}{isMine ? " · Din bokning" : ""}
+          </div>
+
+          {isMine && (
+            <button
+              onClick={() => cancelUpcomingBooking(booking.id)}
+              style={{
+                marginTop: "9px",
+                padding: "7px 12px",
+                borderRadius: "9px",
+                border: "1px solid #fecaca",
+                background: "white",
+                color: "#dc2626",
+                fontWeight: "700",
+                cursor: "pointer",
+              }}
+            >
+              Avboka
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={pageContainer}>
       <div style={card}>
@@ -274,21 +389,42 @@ function TenantHome({ setView, tenant, house }) {
           {house?.address}, {house?.city}
         </p>
 
-        <h3>📅 Kommande bokningar</h3>
+        <h3 style={{ marginBottom: 0 }}>📅 Nästa tvättid</h3>
 
-        {upcomingBookings.length === 0 ? (
-          <p>Inga kommande bokningar.</p>
-        ) : (
-          upcomingBookings.map((booking) => (
-            <div key={booking.id}>
-              {booking.date} — {booking.start_time.slice(0, 5)} - {booking.end_time.slice(0, 5)} (
-              {booking.name})
+        {!nextBooking ? (
+          <div
+            style={{
+              padding: "22px 18px",
+              borderRadius: "18px",
+              background: "#f8fafc",
+              border: "1px dashed #cbd5e1",
+              textAlign: "center",
+              color: "#64748b",
+            }}
+          >
+            <div style={{ fontSize: "30px", marginBottom: "7px" }}>🧺</div>
+            <strong style={{ color: "#334155" }}>Inga kommande bokningar</strong>
+            <div style={{ fontSize: "14px", marginTop: "4px" }}>
+              Tvättstugan väntar!
             </div>
-          ))
+          </div>
+        ) : (
+          <BookingCard booking={nextBooking} featured />
+        )}
+
+        {laterBookings.length > 0 && (
+          <>
+            <h3 style={{ marginBottom: 0, fontSize: "16px", color: "#334155" }}>
+              Fler bokade tider
+            </h3>
+            {laterBookings.map((booking) => (
+              <BookingCard key={booking.id} booking={booking} />
+            ))}
+          </>
         )}
 
         <button style={primaryButton} onClick={() => setView("booking")}>
-          Boka tvättid
+          + Boka ny tvättid
         </button>
 
         <button
