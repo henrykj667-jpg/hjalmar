@@ -455,6 +455,8 @@ function BookingPage({ setView, tenant, house }) {
   const [bookings, setBookings] = useState([]);
   const [monthBookings, setMonthBookings] = useState([]);
   const [bookingConfirmation, setBookingConfirmation] = useState(null);
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelConfirmation, setCancelConfirmation] = useState(null);
 
   const washSlots = house?.wash_slots || [
     { start: "07:00", end: "14:00" },
@@ -564,15 +566,11 @@ const { data: myBookings } = await supabase
     setBookingConfirmation({ date: selectedDate, startTime, endTime });
   }
 
-  async function cancelBooking(bookingId) {
-
-    if (!window.confirm("Vill du verkligen avboka tiden?")) {
-  return;
-}
+  async function cancelBooking(booking) {
     const { error } = await supabase
       .from("bookings")
       .delete()
-      .eq("id", bookingId);
+      .eq("id", booking.id);
 
     if (error) {
       console.log("CANCEL ERROR:", error);
@@ -582,7 +580,8 @@ const { data: myBookings } = await supabase
 
     await loadBookings();
     await loadMonthBookings();
-    alert("Tiden är avbokad");
+    setCancelTarget(null);
+    setCancelConfirmation(booking);
   }
 
   function changeMonth(monthChange) {
@@ -596,6 +595,37 @@ const { data: myBookings } = await supabase
   return (
     <div style={pageContainer}>
       <div style={card}>
+        {cancelTarget && (
+          <div style={{ position: "fixed", inset: 0, zIndex: 10000, background: "rgba(15, 23, 42, 0.48)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }} onClick={() => setCancelTarget(null)}>
+            <div style={{ width: "100%", maxWidth: "360px", background: "white", borderRadius: "26px", padding: "28px 24px 22px", textAlign: "center", boxShadow: "0 24px 70px rgba(15, 23, 42, 0.28)" }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ width: "68px", height: "68px", margin: "0 auto 16px", borderRadius: "50%", background: "#fee2e2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "30px" }}>🗑️</div>
+              <h2 style={{ margin: "0 0 8px", color: "#102f70", fontSize: "24px" }}>Avboka tvättid?</h2>
+              <p style={{ margin: "0 0 18px", color: "#64748b", fontSize: "14px" }}>Tiden blir ledig för andra hyresgäster.</p>
+              <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "16px", padding: "14px", marginBottom: "18px" }}>
+                <strong style={{ color: "#102f70" }}>{getFriendlyBookingDate(cancelTarget.date)}</strong>
+                <div style={{ color: "#334155", marginTop: "5px", fontWeight: "800", fontSize: "18px" }}>{cancelTarget.start_time.slice(0,5)}–{cancelTarget.end_time.slice(0,5)}</div>
+              </div>
+              <button onClick={() => cancelBooking(cancelTarget)} style={{ width: "100%", border: "none", borderRadius: "14px", padding: "14px", background: "#dc2626", color: "white", fontSize: "16px", fontWeight: "800", cursor: "pointer", marginBottom: "10px" }}>Avboka tiden</button>
+              <button onClick={() => setCancelTarget(null)} style={{ width: "100%", border: "none", borderRadius: "14px", padding: "13px", background: "#f1f5f9", color: "#1f6feb", fontSize: "15px", fontWeight: "800", cursor: "pointer" }}>Behåll bokningen</button>
+            </div>
+          </div>
+        )}
+
+        {cancelConfirmation && (
+          <div style={{ position: "fixed", inset: 0, zIndex: 10000, background: "rgba(15, 23, 42, 0.48)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }} onClick={() => setCancelConfirmation(null)}>
+            <div style={{ width: "100%", maxWidth: "360px", background: "white", borderRadius: "26px", padding: "28px 24px 22px", textAlign: "center", boxShadow: "0 24px 70px rgba(15, 23, 42, 0.28)" }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ width: "72px", height: "72px", margin: "0 auto 16px", borderRadius: "50%", background: "linear-gradient(135deg, #dcfce7, #bbf7d0)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "36px", color: "#15803d", fontWeight: "900" }}>✓</div>
+              <h2 style={{ margin: "0 0 8px", color: "#102f70", fontSize: "24px" }}>Tvättiden är avbokad!</h2>
+              <p style={{ margin: "0 0 18px", color: "#64748b", fontSize: "14px" }}>Tiden är nu ledig och kan bokas av andra.</p>
+              <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "16px", padding: "14px", marginBottom: "18px" }}>
+                <strong style={{ color: "#102f70" }}>{getFriendlyBookingDate(cancelConfirmation.date)}</strong>
+                <div style={{ color: "#334155", marginTop: "5px", fontWeight: "800", fontSize: "18px" }}>{cancelConfirmation.start_time.slice(0,5)}–{cancelConfirmation.end_time.slice(0,5)}</div>
+              </div>
+              <button onClick={() => setCancelConfirmation(null)} style={{ width: "100%", border: "none", borderRadius: "14px", padding: "14px", background: "linear-gradient(135deg, #1f6feb, #1557b0)", color: "white", fontSize: "16px", fontWeight: "800", cursor: "pointer" }}>OK</button>
+            </div>
+          </div>
+        )}
+
         {bookingConfirmation && (
           <div
             style={{
@@ -866,7 +896,7 @@ const myBooking = bookingsForDay.some(
 
             {booking.tenant_id === tenant.id && (
               <button
-                onClick={() => cancelBooking(booking.id)}
+                onClick={() => setCancelTarget(booking)}
                 style={{
                   marginLeft: "10px",
                   border: "none",
