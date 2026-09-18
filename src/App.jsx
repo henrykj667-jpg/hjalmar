@@ -454,6 +454,7 @@ function BookingPage({ setView, tenant, house }) {
   const [selectedDate, setSelectedDate] = useState(today);
   const [bookings, setBookings] = useState([]);
   const [monthBookings, setMonthBookings] = useState([]);
+  const [bookingConfirmation, setBookingConfirmation] = useState(null);
 
   const washSlots = house?.wash_slots || [
     { start: "07:00", end: "14:00" },
@@ -560,7 +561,7 @@ const { data: myBookings } = await supabase
 
     await loadBookings();
     await loadMonthBookings();
-    alert("Tvättid bokad!");
+    setBookingConfirmation({ date: selectedDate, startTime, endTime });
   }
 
   async function cancelBooking(bookingId) {
@@ -595,6 +596,100 @@ const { data: myBookings } = await supabase
   return (
     <div style={pageContainer}>
       <div style={card}>
+        {bookingConfirmation && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 9999,
+              background: "rgba(15, 23, 42, 0.48)",
+              backdropFilter: "blur(4px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "20px",
+            }}
+            onClick={() => setBookingConfirmation(null)}
+          >
+            <div
+              style={{
+                width: "100%",
+                maxWidth: "360px",
+                background: "white",
+                borderRadius: "26px",
+                padding: "28px 24px 22px",
+                textAlign: "center",
+                boxShadow: "0 24px 70px rgba(15, 23, 42, 0.28)",
+                border: "1px solid rgba(148, 163, 184, 0.22)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div
+                style={{
+                  width: "72px",
+                  height: "72px",
+                  margin: "0 auto 16px",
+                  borderRadius: "50%",
+                  background: "linear-gradient(135deg, #dcfce7, #bbf7d0)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "36px",
+                  color: "#15803d",
+                  fontWeight: "900",
+                }}
+              >
+                ✓
+              </div>
+
+              <h2 style={{ margin: "0 0 6px", color: "#102f70", fontSize: "24px" }}>
+                Tvättid bokad!
+              </h2>
+              <p style={{ margin: "0 0 20px", color: "#64748b", fontSize: "14px" }}>
+                Din bokning är klar.
+              </p>
+
+              <div
+                style={{
+                  background: "linear-gradient(135deg, #eff6ff, #f8fafc)",
+                  border: "1px solid #dbeafe",
+                  borderRadius: "18px",
+                  padding: "16px",
+                  marginBottom: "20px",
+                  textAlign: "left",
+                }}
+              >
+                <div style={{ fontWeight: "800", color: "#102f70", marginBottom: "7px" }}>
+                  📅 {getFriendlyBookingDate(bookingConfirmation.date)}
+                </div>
+                <div style={{ color: "#334155", marginBottom: "7px", fontWeight: "700" }}>
+                  🕒 {bookingConfirmation.startTime.slice(0, 5)}–{bookingConfirmation.endTime.slice(0, 5)}
+                </div>
+                <div style={{ color: "#64748b", fontSize: "14px" }}>
+                  📍 {house?.address}{house?.city ? `, ${house.city}` : ""}
+                </div>
+              </div>
+
+              <button
+                style={{
+                  width: "100%",
+                  border: "none",
+                  borderRadius: "14px",
+                  padding: "14px 18px",
+                  background: "linear-gradient(135deg, #1f6feb, #1557b0)",
+                  color: "white",
+                  fontSize: "16px",
+                  fontWeight: "800",
+                  cursor: "pointer",
+                  boxShadow: "0 8px 20px rgba(31, 111, 235, 0.24)",
+                }}
+                onClick={() => setBookingConfirmation(null)}
+              >
+                Klart
+              </button>
+            </div>
+          </div>
+        )}
         <h2 style={pageTitle}>Välj tvättpass</h2>
 
         <input
