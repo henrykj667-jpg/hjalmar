@@ -1000,28 +1000,33 @@ localStorage.setItem("companyName", companyName);
 
 function LandlordHome({ setView, houses, setSelectedLandlordHouse }) {
   return (
-    <div style={pageContainer}>
-      <div style={card}>
-        <h2 style={pageTitle}>Hyresvärd</h2>
+    <div style={{ ...pageContainer, alignItems: "flex-start" }}>
+      <div style={{ ...card, maxWidth: "420px", marginTop: "18px", gap: "18px" }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ width: "58px", height: "58px", margin: "0 auto 10px", borderRadius: "18px", background: "linear-gradient(135deg, #dbeafe, #eff6ff)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "29px" }}>🏢</div>
+          <h2 style={{ ...pageTitle, fontSize: "27px" }}>Hyresvärd</h2>
+          <p style={{ ...pageText, marginTop: "6px" }}>Hantera dina fastigheter i HJALMAR</p>
+        </div>
 
-        <h3>Mina fastigheter</h3>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <h3 style={{ margin: 0, color: "#102f70" }}>Mina fastigheter</h3>
+          <span style={{ background: "#eff6ff", color: "#1f6feb", padding: "6px 10px", borderRadius: "999px", fontSize: "13px", fontWeight: "800" }}>{houses.length} st</span>
+        </div>
 
-        {houses.map((house) => (
-  <button
-    key={house.id}
-    style={primaryButton}
-    onClick={() => {
-      setSelectedLandlordHouse(house);
-      setView("houseDetails");
-    }}
-  >
-    {house.address}, {house.city}
-  </button>
-))}
+        {houses.length === 0 ? (
+          <div style={{ padding: "22px", borderRadius: "18px", background: "#f8fafc", textAlign: "center", color: "#64748b" }}>Inga fastigheter hittades.</div>
+        ) : houses.map((house) => (
+          <button key={house.id} onClick={() => { setSelectedLandlordHouse(house); setView("houseDetails"); }} style={{ width: "100%", border: "1px solid #dbeafe", borderRadius: "20px", padding: "17px", background: "linear-gradient(135deg, #ffffff, #f8fbff)", boxShadow: "0 8px 22px rgba(31, 111, 235, 0.08)", cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: "14px" }}>
+            <div style={{ width: "48px", height: "48px", flexShrink: 0, borderRadius: "15px", background: "#e8f1ff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px" }}>🏠</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ color: "#102f70", fontWeight: "900", fontSize: "17px" }}>{house.address}</div>
+              <div style={{ color: "#64748b", fontSize: "14px", marginTop: "3px" }}>{house.city}</div>
+            </div>
+            <div style={{ color: "#1f6feb", fontSize: "25px", fontWeight: "800" }}>›</div>
+          </button>
+        ))}
 
-        <button style={backButton} onClick={() => setView("start")}>
-          Logga ut
-        </button>
+        <button style={{ ...backButton, marginTop: "4px" }} onClick={() => setView("start")}>Logga ut</button>
       </div>
     </div>
   );
@@ -1292,339 +1297,120 @@ function changeMonth(monthChange) {
   setSelectedDate(currentDate.toISOString().split("T")[0]);
 }
 
+  const sectionStyle = {
+    background: "#ffffff",
+    border: "1px solid #e2e8f0",
+    borderRadius: "20px",
+    padding: "18px",
+    boxShadow: "0 7px 22px rgba(15, 23, 42, 0.05)",
+  };
+
+  const sectionTitle = {
+    margin: "0 0 14px",
+    color: "#102f70",
+    fontSize: "18px",
+  };
+
   return (
-    <div style={pageContainer}>
-      <div style={card}>
-        <h2 style={pageTitle}>{house?.address}</h2>
-        <p style={pageText}>{house?.city}</p>
-
-        <h3>📌 Anslagstavla</h3>
-
-        <textarea
-          style={{ ...inputStyle, minHeight: "90px", resize: "vertical" }}
-          placeholder="Skriv meddelande till hyresgästerna..."
-          value={notice}
-          onChange={(e) => setNotice(e.target.value)}
-        />
-
-        <button style={primaryButton} onClick={saveNotice}>
-          Spara anslag
-        </button>
-
-<h3>⚙️ Bokningsregler</h3>
-
-<p style={pageText}>Max antal bokade dagar</p>
-
-<input
-  style={inputStyle}
-  type="number"
-  min="1"
-  placeholder="Max bokade dagar"
-  value={maxBookingDays}
-  onChange={(e) => setMaxBookingDays(e.target.value)}
-/>
-
-<p style={pageText}>Max antal pass samma dag</p>
-
-<input
-  style={inputStyle}
-  type="number"
-  min="1"
-  placeholder="Max pass samma dag"
-  value={maxSlotsPerDay}
-  onChange={(e) => setMaxSlotsPerDay(e.target.value)}
-/>
-
-<button style={primaryButton} onClick={saveBookingRules}>
-  Spara bokningsregler
-</button>
-
-<h3>🧺 Tvättpass</h3>
-
-{washSlots.map((slot, index) => (
-  <div
-    key={index}
-    style={{
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: "10px",
-      gap: "8px",
-    }}
-  >
-    <div>
-      {slot.start} - {slot.end}
-    </div>
-
-    <button
-      style={{
-        background: "#ef4444",
-        color: "white",
-        border: "none",
-        borderRadius: "8px",
-        padding: "5px 10px",
-        cursor: "pointer",
-      }}
-      onClick={() => removeWashSlot(index)}
-    >
-      ❌
-    </button>
-  </div>
-))}
-
-
-
-<input
-  style={inputStyle}
-  placeholder="07:00"
-  value={newSlotStart}
-  onChange={(e) => setNewSlotStart(e.target.value)}
-/>
-
-<input
-  style={inputStyle}
-  placeholder="14:00"
-  value={newSlotEnd}
-  onChange={(e) => setNewSlotEnd(e.target.value)}
-/>
-
-<button style={primaryButton} onClick={addWashSlot}>
-  Lägg till tvättpass
-</button>
-
-<button style={primaryButton} onClick={saveWashSlots}>
-  Spara tvättpass
-</button>
-
-<h3>📅 Kalender</h3>
-
-<div
-  style={{
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "8px",
-  }}
->
-  <button style={backButton} onClick={() => changeMonth(-1)}>
-    ←
-  </button>
-
-  <h3 style={{ margin: 0 }}>
-    {new Date(selectedDate).toLocaleDateString("sv-SE", {
-      month: "long",
-      year: "numeric",
-    })}
-  </h3>
-
-  <button style={backButton} onClick={() => changeMonth(1)}>
-    →
-  </button>
-</div>
-
-<div style={calendarHeader}>
-  <span>Må</span>
-  <span>Ti</span>
-  <span>On</span>
-  <span>To</span>
-  <span>Fr</span>
-  <span>Lö</span>
-  <span>Sö</span>
-</div>
-
-<div style={calendarGrid}>
-  {[
-  ...Array(emptyDays).fill(null),
-  ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
-  ...Array(
-    42 -
-      (emptyDays + daysInMonth)
-  ).fill(null),
-].map((day, index) => {
-   if (!day) {
-  return (
-    <div
-      key={`empty-${index}`}
-      style={{
-        ...calendarDay,
-        background: "#f3f4f6",
-        visibility: "hidden",
-      }}
-    />
-  );
-}
-    const date =
-      selectedDate.slice(0, 8) + String(day).padStart(2, "0");
-
-    const bookingsForDay = monthBookings.filter(
-      (booking) => booking.date === date
-    );
-
-    const isSelected = date === selectedDate;
-
-    return (
-      <button
-        key={date}
-        style={{
-          ...calendarDay,
-          background: isSelected
-            ? "#1f6feb"
-            : bookingsForDay.length >= washSlots.length
-            ? "#fca5a5"
-            : bookingsForDay.length > 0
-            ? "#fde68a"
-            : "#bbf7d0",
-          color: isSelected ? "white" : "#111827",
-            border:
-    date === today
-      ? "2px solid #111827"
-      : "none",
-        }}
-
-
-        onClick={() => setSelectedDate(date)}
-      >
-        <div>{day}</div>
-        <div style={{ fontSize: "10px", marginTop: "3px" }}>
-          {bookingsForDay.length > 0 ? bookingsForDay.length : ""}
-        </div>
-      </button>
-    );
-  })}
-</div>
-
-<div style={{ fontSize: "13px", color: "#555", marginBottom: "12px" }}>
-  <span style={{ color: "#22c55e" }}>■</span> Ledig &nbsp;
-  <span style={{ color: "#f59e0b" }}>■</span> Delvis bokad &nbsp;
-  <span style={{ color: "#ef4444" }}>■</span> Fullbokad &nbsp;
-  <span style={{ color: "#1f6feb" }}>■</span> Vald dag
-</div>
-
-        <h3>📅 Bokningar {selectedDate}</h3>
-
-        {bookings.length === 0 ? (
-  <p>Inga bokningar idag.</p>
-) : (
-  bookings.map((booking) => (
-    <div
-      key={booking.id}
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: "10px",
-      }}
-    >
-      <div>
-        {booking.start_time.slice(0, 5)} - {booking.end_time.slice(0, 5)} ({booking.name})
-      </div>
-
-      <button
-        style={{
-          background: "#ef4444",
-          color: "white",
-          border: "none",
-          borderRadius: "8px",
-          padding: "5px 10px",
-          cursor: "pointer",
-        }}
-        onClick={() => deleteBooking(booking.id)}
-      >
-        ❌
-      </button>
-    </div>
-  ))
-)}
-
-        <h3>👥 Hyresgäster</h3>
-
-        {tenants.map((tenant) => (
-          <div key={tenant.id} style={{ marginBottom: "12px" }}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: "8px",
-              }}
-            >
-              <div>👤 {tenant.name}</div>
-
-              <div style={{ display: "flex", gap: "6px" }}>
-                <button
-                  style={{
-                    background: "#4f75d8",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "8px",
-                    padding: "5px 10px",
-                    cursor: "pointer",
-                  }}
-                  onClick={() => {
-                    setEditingTenantId(tenant.id);
-                    setEditPin("");
-                  }}
-                >
-                  🔑
-                </button>
-
-                <button
-                  style={{
-                    background: "#ef4444",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "8px",
-                    padding: "5px 10px",
-                    cursor: "pointer",
-                  }}
-                  onClick={() => deleteTenant(tenant.id)}
-                >
-                  ❌
-                </button>
-              </div>
-            </div>
-
-            {editingTenantId === tenant.id && (
-              <div style={{ marginTop: "8px" }}>
-                <input
-                  style={inputStyle}
-                  placeholder="Ny PIN"
-                  value={editPin}
-                  onChange={(e) => setEditPin(e.target.value)}
-                />
-
-                <button
-                  style={primaryButton}
-                  onClick={() => saveTenantPin(tenant.id)}
-                >
-                  Spara ny PIN
-                </button>
-              </div>
-            )}
+    <div style={{ ...pageContainer, alignItems: "flex-start" }}>
+      <div style={{ ...card, maxWidth: "440px", marginTop: "10px", background: "#f8fafc", gap: "14px" }}>
+        <div style={{ background: "linear-gradient(135deg, #102f70, #1f6feb)", borderRadius: "22px", padding: "20px", color: "white", boxShadow: "0 12px 28px rgba(31, 111, 235, 0.22)" }}>
+          <div style={{ fontSize: "13px", opacity: 0.8, fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.7px" }}>Fastighet</div>
+          <h2 style={{ margin: "5px 0 2px", fontSize: "26px" }}>{house?.address}</h2>
+          <div style={{ opacity: 0.9 }}>{house?.city}</div>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "16px" }}>
+            <span style={{ background: "rgba(255,255,255,.16)", padding: "7px 10px", borderRadius: "999px", fontSize: "13px", fontWeight: "700" }}>👥 {tenants.length} hyresgäster</span>
+            <span style={{ background: "rgba(255,255,255,.16)", padding: "7px 10px", borderRadius: "999px", fontSize: "13px", fontWeight: "700" }}>🧺 {washSlots.length} tvättpass</span>
           </div>
-        ))}
+        </div>
 
-        <input
-          style={inputStyle}
-          placeholder="Namn"
-          value={newTenantName}
-          onChange={(e) => setNewTenantName(e.target.value)}
-        />
+        <div style={sectionStyle}>
+          <h3 style={sectionTitle}>📅 Kalender & bokningar</h3>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+            <button style={{ ...backButton, width: "48px", margin: 0, padding: "9px" }} onClick={() => changeMonth(-1)}>←</button>
+            <strong style={{ color: "#102f70", textTransform: "capitalize" }}>{new Date(selectedDate).toLocaleDateString("sv-SE", { month: "long", year: "numeric" })}</strong>
+            <button style={{ ...backButton, width: "48px", margin: 0, padding: "9px" }} onClick={() => changeMonth(1)}>→</button>
+          </div>
 
-        <input
-          style={inputStyle}
-          placeholder="PIN-kod"
-          value={newTenantPin}
-          onChange={(e) => setNewTenantPin(e.target.value)}
-        />
+          <div style={calendarHeader}><span>Må</span><span>Ti</span><span>On</span><span>To</span><span>Fr</span><span>Lö</span><span>Sö</span></div>
+          <div style={calendarGrid}>
+            {[...Array(emptyDays).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1), ...Array(42 - (emptyDays + daysInMonth)).fill(null)].map((day, index) => {
+              if (!day) return <div key={`empty-${index}`} style={{ ...calendarDay, visibility: "hidden" }} />;
+              const date = selectedDate.slice(0, 8) + String(day).padStart(2, "0");
+              const bookingsForDay = monthBookings.filter((booking) => booking.date === date);
+              const isSelected = date === selectedDate;
+              return (
+                <button key={date} style={{ ...calendarDay, background: isSelected ? "#1f6feb" : bookingsForDay.length >= washSlots.length ? "#fecaca" : bookingsForDay.length > 0 ? "#fef3c7" : "#dcfce7", color: isSelected ? "white" : "#111827", border: date === today ? "2px solid #102f70" : "none" }} onClick={() => setSelectedDate(date)}>
+                  <div>{day}</div><div style={{ fontSize: "10px", marginTop: "3px" }}>{bookingsForDay.length || ""}</div>
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ fontSize: "12px", color: "#64748b", marginBottom: "16px", lineHeight: 1.8 }}>🟩 Ledig &nbsp; 🟨 Delvis bokad &nbsp; 🟥 Fullbokad &nbsp; 🟦 Vald</div>
 
-        <button style={primaryButton} onClick={addTenant}>
-          Lägg till hyresgäst
-        </button>
+          <div style={{ color: "#102f70", fontWeight: "800", marginBottom: "9px" }}>Bokningar {selectedDate}</div>
+          {bookings.length === 0 ? <div style={{ padding: "14px", borderRadius: "14px", background: "#f8fafc", color: "#64748b", textAlign: "center" }}>Inga bokningar denna dag.</div> : bookings.map((booking) => (
+            <div key={booking.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", padding: "12px", background: "#f8fafc", borderRadius: "14px", marginBottom: "8px" }}>
+              <div><strong style={{ color: "#102f70" }}>{booking.start_time.slice(0,5)}–{booking.end_time.slice(0,5)}</strong><div style={{ color: "#64748b", fontSize: "13px", marginTop: "2px" }}>{booking.name}</div></div>
+              <button style={{ background: "#fee2e2", color: "#dc2626", border: "none", borderRadius: "10px", padding: "8px 10px", cursor: "pointer" }} onClick={() => deleteBooking(booking.id)}>✕</button>
+            </div>
+          ))}
+        </div>
 
-        <button style={backButton} onClick={() => setView("landlordHome")}>
-          ← Tillbaka
-        </button>
+        <div style={sectionStyle}>
+          <h3 style={sectionTitle}>📌 Anslagstavla</h3>
+          <p style={{ margin: "-6px 0 12px", color: "#64748b", fontSize: "13px" }}>Meddelandet visas för hyresgästerna.</p>
+          <textarea style={{ ...inputStyle, minHeight: "100px", resize: "vertical", background: "#f8fafc" }} placeholder="Skriv meddelande till hyresgästerna..." value={notice} onChange={(e) => setNotice(e.target.value)} />
+          <button style={primaryButton} onClick={saveNotice}>Spara anslag</button>
+        </div>
+
+        <div style={sectionStyle}>
+          <h3 style={sectionTitle}>👥 Hyresgäster <span style={{ float: "right", fontSize: "13px", background: "#eff6ff", color: "#1f6feb", padding: "5px 9px", borderRadius: "999px" }}>{tenants.length}</span></h3>
+          {tenants.map((tenant) => (
+            <div key={tenant.id} style={{ padding: "12px", borderRadius: "14px", background: "#f8fafc", marginBottom: "9px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px" }}>
+                <div style={{ color: "#334155", fontWeight: "700" }}>👤 {tenant.name}</div>
+                <div style={{ display: "flex", gap: "6px" }}>
+                  <button style={{ background: "#e8f1ff", color: "#1f6feb", border: "none", borderRadius: "9px", padding: "7px 9px", cursor: "pointer" }} onClick={() => { setEditingTenantId(tenant.id); setEditPin(""); }}>🔑</button>
+                  <button style={{ background: "#fee2e2", color: "#dc2626", border: "none", borderRadius: "9px", padding: "7px 9px", cursor: "pointer" }} onClick={() => deleteTenant(tenant.id)}>✕</button>
+                </div>
+              </div>
+              {editingTenantId === tenant.id && <div style={{ marginTop: "10px" }}><input style={inputStyle} placeholder="Ny PIN" value={editPin} onChange={(e) => setEditPin(e.target.value)} /><button style={primaryButton} onClick={() => saveTenantPin(tenant.id)}>Spara ny PIN</button></div>}
+            </div>
+          ))}
+          <div style={{ borderTop: "1px solid #e2e8f0", margin: "15px 0", paddingTop: "15px" }}>
+            <input style={inputStyle} placeholder="Namn" value={newTenantName} onChange={(e) => setNewTenantName(e.target.value)} />
+            <input style={inputStyle} placeholder="PIN-kod" value={newTenantPin} onChange={(e) => setNewTenantPin(e.target.value)} />
+            <button style={primaryButton} onClick={addTenant}>+ Lägg till hyresgäst</button>
+          </div>
+        </div>
+
+        <div style={sectionStyle}>
+          <h3 style={sectionTitle}>🧺 Tvättpass</h3>
+          {washSlots.map((slot, index) => (
+            <div key={index} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "11px 12px", background: "#f8fafc", borderRadius: "13px", marginBottom: "8px" }}>
+              <strong style={{ color: "#334155" }}>{slot.start}–{slot.end}</strong>
+              <button style={{ background: "#fee2e2", color: "#dc2626", border: "none", borderRadius: "9px", padding: "7px 10px", cursor: "pointer" }} onClick={() => removeWashSlot(index)}>✕</button>
+            </div>
+          ))}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginTop: "12px" }}>
+            <input style={inputStyle} placeholder="07:00" value={newSlotStart} onChange={(e) => setNewSlotStart(e.target.value)} />
+            <input style={inputStyle} placeholder="14:00" value={newSlotEnd} onChange={(e) => setNewSlotEnd(e.target.value)} />
+          </div>
+          <button style={{ ...primaryButton, background: "#e8f1ff", color: "#1f6feb", boxShadow: "none" }} onClick={addWashSlot}>+ Lägg till tvättpass</button>
+          <button style={primaryButton} onClick={saveWashSlots}>Spara tvättpass</button>
+        </div>
+
+        <div style={sectionStyle}>
+          <h3 style={sectionTitle}>⚙️ Bokningsregler</h3>
+          <p style={{ ...pageText, textAlign: "left", marginBottom: "6px" }}>Max antal bokade dagar</p>
+          <input style={inputStyle} type="number" min="1" value={maxBookingDays} onChange={(e) => setMaxBookingDays(e.target.value)} />
+          <p style={{ ...pageText, textAlign: "left", marginBottom: "6px", marginTop: "4px" }}>Max antal pass samma dag</p>
+          <input style={inputStyle} type="number" min="1" value={maxSlotsPerDay} onChange={(e) => setMaxSlotsPerDay(e.target.value)} />
+          <button style={primaryButton} onClick={saveBookingRules}>Spara bokningsregler</button>
+        </div>
+
+        <button style={backButton} onClick={() => setView("landlordHome")}>← Till mina fastigheter</button>
       </div>
     </div>
   );
