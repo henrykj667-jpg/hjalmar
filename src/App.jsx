@@ -14,6 +14,14 @@ function isBookingActive(booking, now = new Date()) {
   return bookingEnd > now;
 }
 
+// Veckan börjar måndag. Använd lokal kalenderdag för att undvika UTC-skiften.
+function getBookingWeekStart(dateString) {
+  const date = new Date(dateString + "T12:00:00");
+  const mondayOffset = (date.getDay() + 6) % 7;
+  date.setDate(date.getDate() - mondayOffset);
+  return getLocalDateString(date);
+}
+
 function getFriendlyBookingDate(dateString) {
   const bookingDate = new Date(`${dateString}T12:00:00`);
   const today = new Date();
@@ -508,61 +516,53 @@ function BookingPage({ setView, tenant, house }) {
   async function bookSlot(startTime, endTime) {
     const maxBookingDays = house?.max_booking_days || 1;
     const maxSlotsPerDay = house?.max_slots_per_day || 2;
+    const now = new Date();
 
-    const { data: existing } = await supabase
-      .from("bookings")
-      .select("*")
-      .eq("house_id", house.id)
-      .eq("date", selectedDate)
-      .eq("start_time", startTime);
-
-    if (existing && existing.length > 0) {
-      alert("Passet är redan bokat");
+    if (new Date(selectedDate + "T" + endTime + ":00") <= now) {
+      alert("Det tvättpasset har redan passerat.");
       return;
     }
 
-    const today = getLocalDateString();
-
-const { data: myBookings } = await supabase
-  .from("bookings")
-  .select("*")
-  .eq("tenant_id", tenant.id)
-  .gte("date", today);
-
-    const activeMyBookings = (myBookings || []).filter((booking) =>
-      isBookingActive(booking)
-    );
-    const uniqueDates = [...new Set(activeMyBookings.map((b) => b.date))];
-    const alreadyHasThisDate = uniqueDates.includes(selectedDate);
-
-    if (!alreadyHasThisDate && uniqueDates.length >= maxBookingDays) {
-      alert(`Du kan bara ha bokningar på ${maxBookingDays} dag(ar) åt gången.`);
-      return;
-    }
-
-    const bookingsThisDay = activeMyBookings.filter(
-      (b) => b.date === selectedDate
-    );
-
-    if (bookingsThisDay.length >= maxSlotsPerDay) {
-      alert(`Du kan bara boka ${maxSlotsPerDay} pass samma dag.`);
-      return;
-    }
-
-    const { error } = await supabase.from("bookings").insert([
-      {
-        house_id: house.id,
-        tenant_id: tenant.id,
-        name: tenant.name,
-        date: selectedDate,
-        start_time: startTime,
-        end_time: endTime,
-      },
+    const [{ data: occupied, error: occupiedError }, { data: myBookings, error: mineError }] = await Promise.all([
+      supabase.from("bookings").select("start_time,end_time")
+        .eq("house_id", house.id).eq("date", selectedDate),
+      supabase.from("bookings").select("date,start_time,end_time")
+        .eq("tenant_id", tenant.id).gte("date", getLocalDateString()),
     ]);
 
+    if (occupiedError || mineError) {
+      alert("Kunde inte kontrollera bokningarna. Försök igen.");
+      return;
+    }
+
+    if ((occupied || []).some((b) =>
+      startTime < b.end_time.slice(0, 5) && endTime > b.start_time.slice(0, 5)
+    )) {
+      alert("Passet är redan bokat.");
+      return;
+    }
+
+    const active = (myBookings || []).filter((b) => isBookingActive(b, now));
+    const week = getBookingWeekStart(selectedDate);
+    const activeInWeek = active.filter((b) => getBookingWeekStart(b.date) === week);
+    const uniqueDates = new Set(activeInWeek.map((b) => b.date));
+    if (!uniqueDates.has(selectedDate) && uniqueDates.size >= maxBookingDays) {
+      alert("Du kan ha högst " + maxBookingDays + " aktiv(a) bokningsdag(ar) per vecka. När ett pass är slut får du boka igen samma vecka.");
+      return;
+    }
+
+    if (activeInWeek.filter((b) => b.date === selectedDate).length >= maxSlotsPerDay) {
+      alert("Du kan bara boka " + maxSlotsPerDay + " pass samma dag.");
+      return;
+    }
+
+    const { error } = await supabase.from("bookings").insert([{
+      house_id: house.id, tenant_id: tenant.id, name: tenant.name,
+      date: selectedDate, start_time: startTime, end_time: endTime,
+    }]);
     if (error) {
-      console.log("BOOKING ERROR:", error);
-      alert("Kunde inte boka tiden");
+      console.error("BOOKING ERROR:", error);
+      alert("Kunde inte boka tiden. Den kan ha hunnit bli bokad av någon annan.");
       return;
     }
 
@@ -593,8 +593,18 @@ const { data: myBookings } = await supabase
         alert("Kunde inte kontrollera tiderna. Försök igen.");
         return;
       }
-      if ((mine || []).some((booking) => isBookingActive(booking))) {
-        alert("Du har redan en kommande bokning. Använd eller avboka den innan du skapar en återkommande serie.");
+      const activeMine = (mine || []).filter((booking) => isBookingActive(booking));
+      const maxBookingDays = house?.max_booking_days || 1;
+      const maxSlotsPerDay = house?.max_slots_per_day || 2;
+      const weeklyConflicts = dates.filter((date) => {
+        const week = getBookingWeekStart(date);
+        const inWeek = activeMine.filter((booking) => getBookingWeekStart(booking.date) === week);
+        const uniqueDates = new Set(inWeek.map((booking) => booking.date));
+        return (!uniqueDates.has(date) && uniqueDates.size >= maxBookingDays) ||
+          (inWeek.filter((booking) => booking.date === date).length >= maxSlotsPerDay);
+      });
+      if (weeklyConflicts.length) {
+        alert("Du har redan aktiva bokningar under en eller flera av veckorna: " + weeklyConflicts.join(", ") + ". Ingen serie bokades.");
         return;
       }
       const conflicts = dates.filter((date) => (occupied || []).some((booking) =>
@@ -658,7 +668,7 @@ const { data: myBookings } = await supabase
           <div style={{ position: "fixed", inset: 0, zIndex: 10000, background: "rgba(15,23,42,.5)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }} onClick={() => !recurringSaving && setRecurringSlot(null)}>
             <div style={{ width: "100%", maxWidth: "360px", background: "white", borderRadius: "24px", padding: "24px", boxShadow: "0 24px 70px rgba(15,23,42,.25)" }} onClick={(e) => e.stopPropagation()}>
               <h2 style={{ color: "#102f70", textAlign: "center" }}>🔁 Återkommande tvättid</h2>
-              <p style={{ color: "#64748b", textAlign: "center", fontSize: "14px" }}>Samma veckodag och tid, högst fyra tillfällen.</p>
+              <p style={{ color: "#64748b", textAlign: "center", fontSize: "14px" }}>Samma veckodag och tid, högst fyra tillfällen. En aktiv bokningsdag per vecka som standard.</p>
               <div style={{ background: "#eff6ff", borderRadius: "14px", padding: "14px", color: "#102f70", marginBottom: "14px" }}>
                 <strong>{getFriendlyBookingDate(selectedDate)}</strong>
                 <div>{recurringSlot.start}–{recurringSlot.end}</div>
@@ -671,7 +681,7 @@ const { data: myBookings } = await supabase
               <select style={inputStyle} value={recurringCount} onChange={(e) => setRecurringCount(Number(e.target.value))}>
                 <option value={2}>2 tillfällen</option><option value={3}>3 tillfällen</option><option value={4}>4 tillfällen</option>
               </select>
-              <p style={{ color: "#64748b", fontSize: "12px" }}>Alla tillfällen måste vara lediga. Hela serien bokas samtidigt. Tiderna kan avbokas var för sig.</p>
+              <p style={{ color: "#64748b", fontSize: "12px" }}>Alla tillfällen måste vara lediga och följa veckans bokningsgräns. Hela serien bokas samtidigt. Tiderna kan avbokas var för sig.</p>
               <button style={primaryButton} disabled={recurringSaving} onClick={bookRecurringSlot}>{recurringSaving ? "Bokar…" : "Boka återkommande"}</button>
               <button style={backButton} disabled={recurringSaving} onClick={() => setRecurringSlot(null)}>Avbryt</button>
             </div>
@@ -1500,7 +1510,7 @@ function changeMonth(monthChange) {
 
         <div style={sectionStyle}>
           <h3 style={sectionTitle}>⚙️ Bokningsregler</h3>
-          <p style={{ ...pageText, textAlign: "left", marginBottom: "6px" }}>Max antal bokade dagar</p>
+          <p style={{ ...pageText, textAlign: "left", marginBottom: "6px" }}>Max antal aktiva bokningsdagar per vecka</p>
           <input style={inputStyle} type="number" min="1" value={maxBookingDays} onChange={(e) => setMaxBookingDays(e.target.value)} />
           <p style={{ ...pageText, textAlign: "left", marginBottom: "6px", marginTop: "4px" }}>Max antal pass samma dag</p>
           <input style={inputStyle} type="number" min="1" value={maxSlotsPerDay} onChange={(e) => setMaxSlotsPerDay(e.target.value)} />
