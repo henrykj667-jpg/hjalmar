@@ -457,6 +457,11 @@ function BookingPage({ setView, tenant, house }) {
   const [bookingConfirmation, setBookingConfirmation] = useState(null);
   const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelConfirmation, setCancelConfirmation] = useState(null);
+  const [recurringSlot, setRecurringSlot] = useState(null);
+  const [recurringFrequency, setRecurringFrequency] = useState(1);
+  const [recurringCount, setRecurringCount] = useState(4);
+  const [recurringSaving, setRecurringSaving] = useState(false);
+  const [recurringResult, setRecurringResult] = useState(null);
 
   const washSlots = house?.wash_slots || [
     { start: "07:00", end: "14:00" },
@@ -566,6 +571,60 @@ const { data: myBookings } = await supabase
     setBookingConfirmation({ date: selectedDate, startTime, endTime });
   }
 
+  async function bookRecurringSlot() {
+    if (!recurringSlot || recurringSaving) return;
+    setRecurringSaving(true);
+    try {
+      const start = new Date(selectedDate + "T12:00:00");
+      const dates = Array.from({ length: recurringCount }, (_, i) => {
+        const day = new Date(start);
+        day.setDate(start.getDate() + i * recurringFrequency * 7);
+        return getLocalDateString(day);
+      });
+      if (new Date(selectedDate + "T" + recurringSlot.end + ":00") <= new Date()) {
+        alert("Välj ett tvättpass som inte redan har passerat.");
+        return;
+      }
+      const [{ data: occupied, error: occupiedError }, { data: mine, error: mineError }] = await Promise.all([
+        supabase.from("bookings").select("date,start_time,end_time").eq("house_id", house.id).gte("date", dates[0]).lte("date", dates[dates.length - 1]),
+        supabase.from("bookings").select("date,start_time,end_time").eq("tenant_id", tenant.id).gte("date", getLocalDateString()),
+      ]);
+      if (occupiedError || mineError) {
+        alert("Kunde inte kontrollera tiderna. Försök igen.");
+        return;
+      }
+      if ((mine || []).some((booking) => isBookingActive(booking))) {
+        alert("Du har redan en kommande bokning. Använd eller avboka den innan du skapar en återkommande serie.");
+        return;
+      }
+      const conflicts = dates.filter((date) => (occupied || []).some((booking) =>
+        booking.date === date &&
+        recurringSlot.start < booking.end_time.slice(0, 5) &&
+        recurringSlot.end > booking.start_time.slice(0, 5)
+      ));
+      if (conflicts.length) {
+        alert("Dessa datum är redan bokade: " + conflicts.join(", ") + ". Ingen bokning gjordes.");
+        return;
+      }
+      const rows = dates.map((date) => ({
+        house_id: house.id, tenant_id: tenant.id, name: tenant.name,
+        date, start_time: recurringSlot.start, end_time: recurringSlot.end,
+      }));
+      const { error } = await supabase.from("bookings").insert(rows);
+      if (error) {
+        console.error("RECURRING BOOKING ERROR:", error);
+        alert("Kunde inte boka hela serien.");
+        return;
+      }
+      setRecurringSlot(null);
+      setRecurringResult({ dates, start: recurringSlot.start, end: recurringSlot.end });
+      await loadBookings();
+      await loadMonthBookings();
+    } finally {
+      setRecurringSaving(false);
+    }
+  }
+
   async function cancelBooking(booking) {
     const { error } = await supabase
       .from("bookings")
@@ -595,6 +654,42 @@ const { data: myBookings } = await supabase
   return (
     <div style={pageContainer}>
       <div style={card}>
+        {recurringSlot && (
+          <div style={{ position: "fixed", inset: 0, zIndex: 10000, background: "rgba(15,23,42,.5)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }} onClick={() => !recurringSaving && setRecurringSlot(null)}>
+            <div style={{ width: "100%", maxWidth: "360px", background: "white", borderRadius: "24px", padding: "24px", boxShadow: "0 24px 70px rgba(15,23,42,.25)" }} onClick={(e) => e.stopPropagation()}>
+              <h2 style={{ color: "#102f70", textAlign: "center" }}>🔁 Återkommande tvättid</h2>
+              <p style={{ color: "#64748b", textAlign: "center", fontSize: "14px" }}>Samma veckodag och tid, högst fyra tillfällen.</p>
+              <div style={{ background: "#eff6ff", borderRadius: "14px", padding: "14px", color: "#102f70", marginBottom: "14px" }}>
+                <strong>{getFriendlyBookingDate(selectedDate)}</strong>
+                <div>{recurringSlot.start}–{recurringSlot.end}</div>
+              </div>
+              <label style={{ display: "block", color: "#334155", fontWeight: "700" }}>Upprepning</label>
+              <select style={inputStyle} value={recurringFrequency} onChange={(e) => setRecurringFrequency(Number(e.target.value))}>
+                <option value={1}>Varje vecka</option><option value={2}>Varannan vecka</option>
+              </select>
+              <label style={{ display: "block", color: "#334155", fontWeight: "700", marginTop: "12px" }}>Antal tillfällen</label>
+              <select style={inputStyle} value={recurringCount} onChange={(e) => setRecurringCount(Number(e.target.value))}>
+                <option value={2}>2 tillfällen</option><option value={3}>3 tillfällen</option><option value={4}>4 tillfällen</option>
+              </select>
+              <p style={{ color: "#64748b", fontSize: "12px" }}>Alla tillfällen måste vara lediga. Hela serien bokas samtidigt. Tiderna kan avbokas var för sig.</p>
+              <button style={primaryButton} disabled={recurringSaving} onClick={bookRecurringSlot}>{recurringSaving ? "Bokar…" : "Boka återkommande"}</button>
+              <button style={backButton} disabled={recurringSaving} onClick={() => setRecurringSlot(null)}>Avbryt</button>
+            </div>
+          </div>
+        )}
+        {recurringResult && (
+          <div style={{ position: "fixed", inset: 0, zIndex: 10000, background: "rgba(15,23,42,.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }} onClick={() => setRecurringResult(null)}>
+            <div style={{ width: "100%", maxWidth: "360px", background: "white", borderRadius: "24px", padding: "24px", textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ fontSize: "40px", color: "#15803d" }}>✓</div>
+              <h2 style={{ color: "#102f70" }}>Tiderna är bokade!</h2>
+              <p style={{ color: "#64748b" }}>{recurringResult.dates.length} återkommande tvättider:</p>
+              <div style={{ background: "#f8fafc", borderRadius: "14px", padding: "12px", textAlign: "left", color: "#334155" }}>
+                {recurringResult.dates.map((date) => <div key={date} style={{ padding: "5px 0" }}>📅 {getFriendlyBookingDate(date)} · {recurringResult.start}–{recurringResult.end}</div>)}
+              </div>
+              <button style={primaryButton} onClick={() => setRecurringResult(null)}>Klart</button>
+            </div>
+          </div>
+        )}
         {cancelTarget && (
           <div style={{ position: "fixed", inset: 0, zIndex: 10000, background: "rgba(15, 23, 42, 0.48)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }} onClick={() => setCancelTarget(null)}>
             <div style={{ width: "100%", maxWidth: "360px", background: "white", borderRadius: "26px", padding: "28px 24px 22px", textAlign: "center", boxShadow: "0 24px 70px rgba(15, 23, 42, 0.28)" }} onClick={(e) => e.stopPropagation()}>
@@ -869,8 +964,8 @@ const myBooking = bookingsForDay.some(
           );
 
           return (
+            <React.Fragment key={slot.start}>
             <button
-              key={slot.start}
               style={{
                 ...primaryButton,
                 background: booked ? "#9ca3af" : "#4f75d8",
@@ -885,6 +980,8 @@ const myBooking = bookingsForDay.some(
   </div>
 </div>
             </button>
+            <button disabled={Boolean(booked)} style={{ ...primaryButton, background: booked ? "#e2e8f0" : "#eff6ff", color: booked ? "#94a3b8" : "#1f6feb", border: "1px solid #bfdbfe", boxShadow: "none", marginTop: "-7px" }} onClick={() => { setRecurringFrequency(1); setRecurringCount(4); setRecurringSlot(slot); }}>🔁 Återkommande tid</button>
+            </React.Fragment>
           );
         })}
 
