@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import { supabase } from "./supabaseClient";
 
 function getLocalDateString(date = new Date()) {
@@ -964,7 +964,7 @@ const myBooking = bookingsForDay.some(
           );
 
           return (
-            <React.Fragment key={slot.start}>
+            <Fragment key={slot.start}>
             <button
               style={{
                 ...primaryButton,
@@ -981,7 +981,7 @@ const myBooking = bookingsForDay.some(
 </div>
             </button>
             <button disabled={Boolean(booked)} style={{ ...primaryButton, background: booked ? "#e2e8f0" : "#eff6ff", color: booked ? "#94a3b8" : "#1f6feb", border: "1px solid #bfdbfe", boxShadow: "none", marginTop: "-7px" }} onClick={() => { setRecurringFrequency(1); setRecurringCount(4); setRecurringSlot(slot); }}>🔁 Återkommande tid</button>
-            </React.Fragment>
+            </Fragment>
           );
         })}
 
